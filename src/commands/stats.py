@@ -1,3 +1,4 @@
+from unicodedata import category
 from snowfin import Module, slash_command, Interaction, Embed, EmbedAuthor, EmbedField
 
 import math
@@ -5,6 +6,7 @@ from psutil import Process
 from os import getpid
 
 class StatsCommand(Module):
+    category = "Miscellaneous"
 
     @slash_command("stats")
     async def stats(self, ctx: Interaction):

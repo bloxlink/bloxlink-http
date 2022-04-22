@@ -5,6 +5,7 @@ from resources.bloxlink import Bloxlink
 from snowfin.embed import Empty
 
 class InviteCommand(Module):
+    category = "Miscellaneous"
 
     @slash_command("invite")
     async def invite(self, ctx: Interaction):

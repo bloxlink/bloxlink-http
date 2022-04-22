@@ -1,6 +1,8 @@
+from unicodedata import category
 from snowfin import Module, slash_command, Embed, Interaction, Button, EmbedField
 
 class DonateCommand(Module):
+    category = "Miscellaneous"
 
     @slash_command("donate")
     async def donate(self, ctx: Interaction):
