@@ -23,7 +23,7 @@ class CommandsCommand(Module):
             if cmd.module.category == category:
                 commands.append(cmd)
             if cmd.module.category not in all_cats:
-                all_cats.append(cmd.category)
+                all_cats.append(cmd.module.category)
 
         commands = commands[(page - 1) * CMDS_PER_PAGE:page * CMDS_PER_PAGE]
 
