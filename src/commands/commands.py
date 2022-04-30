@@ -13,7 +13,17 @@ class CommandsCommand(Module):
             color=0xdb2323,
         )
 
-        commands = [command for command in self.client.commands if category is None or command.category == category][(page - 1) * CMDS_PER_PAGE:page * CMDS_PER_PAGE]
+        commands = []
+
+        if not category:
+            category = "Miscellaneous"
+        
+        for cmd in self.client.commands:
+            if cmd.module.category == category:
+                commands.append(cmd)
+
+        commands = commands[(page - 1) * CMDS_PER_PAGE:page * CMDS_PER_PAGE]
+
         for command in commands:
             embed.description += f"\n[**{command.name}**](https://blox.link/commands/{command.name})\n<:reply_end:875993580836126720>{command.description}"
 
