@@ -48,7 +48,7 @@ class CommandsCommand(Module):
 
     @select_callback("command_list_category")
     async def command_list_category(self, ctx: Interaction):
-        category = next(ctx.values, "Miscellanous")
+        category = next(ctx.data.values, "Miscellanous")
         return self.render_command_list(category)
 
     @button_callback("command_list_page:{category}:{page}")
