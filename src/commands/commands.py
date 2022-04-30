@@ -48,7 +48,7 @@ class CommandsCommand(Module):
 
     @select_callback("command_list_category")
     async def command_list_category(self, ctx: Interaction):
-        category = next(ctx.data.values, "Miscellanous")
+        category = next(iter(ctx.data.values), "Miscellanous")
         return self.render_command_list(category)
 
     @button_callback("command_list_page:{category}:{page}")
@@ -63,7 +63,7 @@ class CommandsCommand(Module):
         if command is None:
             return self.render_command_list()
 
-        cmd = next((c for c in self.client.commands if c.name == command), None)
+        cmd = next((c for c in self.client.commands if c.name.lower() == command.lower()), None)
 
         if cmd is None:
             return "This command does not exist! Please use `/commands` to view a full list of commands."
