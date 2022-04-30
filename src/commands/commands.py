@@ -38,7 +38,7 @@ class CommandsCommand(Module):
                     SelectOption(
                         label=cat,
                         value=cat,
-                        selected=cat == category
+                        default=cat == category
                     ) for cat in all_cats
                 ],
             ),
