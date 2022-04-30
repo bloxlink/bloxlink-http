@@ -7,7 +7,7 @@ CMDS_PER_PAGE = 8
 class CommandsCommand(Module):
     category = "Miscellaneous"
 
-    def render_command_list(self, category: str = "Miscellanous", page: int = 1, edit: bool = False) -> tuple[Embed, Select, Button, Button]:
+    def render_command_list(self, category: str = "Miscellaneous", page: int = 1, edit: bool = False) -> tuple[Embed, Select, Button, Button]:
         embed = Embed(
             description="Roblox Verification made easy! Features everything you need to integrate your Discord server with Roblox.\n",
             color=0xdb2323,
