@@ -79,7 +79,7 @@ class CommandsCommand(Module):
             fields=[
                 EmbedField(
                     name="Category",
-                    value=cmd.category,
+                    value=cmd.module.category,
                     inline=True
                 ),
             ]
