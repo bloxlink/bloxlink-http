@@ -32,7 +32,7 @@ class CommandsCommand(Module):
         commands = commands[(page - 1) * CMDS_PER_PAGE:page * CMDS_PER_PAGE]
 
         for command in commands:
-            embed.description += f"\n[**{command.name}**](https://blox.link/commands/{command.name})\n<:reply_end:875993580836126720>{command.description}"
+            embed.description += f"\n[**/{command.name}**](https://blox.link/commands/{command.name})\n<:reply_end:875993580836126720>{command.description}"
 
         components = Components(
             Select(
