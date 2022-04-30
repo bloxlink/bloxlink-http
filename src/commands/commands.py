@@ -1,6 +1,6 @@
 import math
 from unicodedata import category
-from snowfin import Module, slash_command, slash_option, Embed, Interaction, Button, EmbedField, Select, SelectOption, select_callback, button_callback, Components, EditResponse, MessageResponse
+from snowfin import Module, EmbedFooter, slash_command, slash_option, Embed, Interaction, Button, EmbedField, Select, SelectOption, select_callback, button_callback, Components, EditResponse, MessageResponse
 
 CMDS_PER_PAGE = 8
 
@@ -24,6 +24,10 @@ class CommandsCommand(Module):
                 commands.append(cmd)
             if cmd.module.category not in all_cats:
                 all_cats.append(cmd.module.category)
+
+        embed.footer = EmbedFooter(
+            text=f"/commands <command name> to view more information | Page {page} of {math.ceil(len(commands) / CMDS_PER_PAGE)}"
+        )
 
         commands = commands[(page - 1) * CMDS_PER_PAGE:page * CMDS_PER_PAGE]
 
