@@ -18,19 +18,17 @@ class CommandsCommand(Module):
         if not category:
             category = "Miscellaneous"
         
+        all_cats = []
         for cmd in self.client.commands:
             if cmd.module.category == category:
                 commands.append(cmd)
+            if cmd.module.category not in all_cats:
+                all_cats.append(cmd.category)
 
         commands = commands[(page - 1) * CMDS_PER_PAGE:page * CMDS_PER_PAGE]
 
         for command in commands:
             embed.description += f"\n[**{command.name}**](https://blox.link/commands/{command.name})\n<:reply_end:875993580836126720>{command.description}"
-
-        all_cats = []
-        for cmd in self.client.commands:
-            if cmd.category not in all_cats:
-                all_cats.append(cmd.category)
 
         return (
             embed,
