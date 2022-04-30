@@ -1,13 +1,13 @@
 import math
 from unicodedata import category
-from snowfin import Module, slash_command, slash_option, Embed, Interaction, Button, EmbedField, Select, SelectOption, select_callback, button_callback
+from snowfin import Module, slash_command, slash_option, Embed, Interaction, Button, EmbedField, Select, SelectOption, select_callback, button_callback, Components, EditResponse, MessageResponse
 
 CMDS_PER_PAGE = 8
 
 class CommandsCommand(Module):
     category = "Miscellaneous"
 
-    def render_command_list(self, category: str = "Miscellanous", page: int = 1) -> tuple[Embed, Select, Button, Button]:
+    def render_command_list(self, category: str = "Miscellanous", page: int = 1, edit: bool = False) -> tuple[Embed, Select, Button, Button]:
         embed = Embed(
             description="Roblox Verification made easy! Features everything you need to integrate your Discord server with Roblox.\n",
             color=0xdb2323,
@@ -30,8 +30,7 @@ class CommandsCommand(Module):
         for command in commands:
             embed.description += f"\n[**{command.name}**](https://blox.link/commands/{command.name})\n<:reply_end:875993580836126720>{command.description}"
 
-        return (
-            embed,
+        components = Components(
             Select(
                 custom_id="command_list_category",
                 options=[
@@ -46,14 +45,19 @@ class CommandsCommand(Module):
             Button("Next", custom_id=f"command_list_page:{category}:{page + 1}", disabled=page * CMDS_PER_PAGE >= len(commands)),
         )
 
+        return (EditResponse if edit else MessageResponse)(
+            embed=embed,
+            components=components,
+        )
+
     @select_callback("command_list_category")
     async def command_list_category(self, ctx: Interaction):
         category = next(iter(ctx.data.values), "Miscellanous")
-        return self.render_command_list(category)
+        return self.render_command_list(category, edit=True)
 
     @button_callback("command_list_page:{category}:{page}")
     async def command_list_page(self, ctx: Interaction, category: str, page: int):
-        return self.render_command_list(category, page)
+        return self.render_command_list(category, page, edit=True)
 
     @slash_command("commands")
     @slash_option("command", "please specify the command name", type=3, required=False)
