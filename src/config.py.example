@@ -9,5 +9,5 @@ REDIS_PASSWORD = ""
 SERVER_HOST = "0.0.0.0"
 SERVER_PORT = 8010
 
-BOT_API = ""
+BOT_API = "http://localhost:8002"
 BOT_API_AUTH = ""
