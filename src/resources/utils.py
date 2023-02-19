@@ -42,9 +42,6 @@ async def fetch(
     is_roblox = "roblox.com" in url
     is_bot_api = BOT_API in url
 
-    if is_bot_api:
-        headers["Authentication"]
-
     if proxy and PROXY_URL and is_roblox:
         old_url = url
         new_json["url"] = url
