@@ -8,12 +8,12 @@ import asyncio
 from inspect import iscoroutinefunction
 import logging
 import importlib
-import hikari
 import functools
+import requests
 
 logger = logging.getLogger()
 
-from .secrets import MONGO_URL, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
+from .secrets import MONGO_URL, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, BOT_API
 from .models import UserData, GuildData
 
 instance: 'Bloxlink' = None
@@ -147,6 +147,30 @@ class Bloxlink(hikari.RESTBot):
         new_roles = [r for r in member.roles if r not in remove_roles] + list(add_roles)
 
         return await self.rest.edit_member(user=member, guild=guild_id, roles=new_roles, reason=reason or "")
+
+    # CONNECTION STATUS
+    def is_mongo_ok(self):
+        try: 
+            return self.mongo.bloxlink.delegate.client.server_info()["ok"] == 1
+        except Exception: 
+            return False
+
+    async def is_redis_ok(self) -> bool:
+        try:
+            # Unsure if timeout is the correct argument.
+            await self.redis.ping(timeout=10, timedelta=10)
+            return True
+        except Exception as ex:
+            # print(ex)
+            # raise ex
+            return False
+
+    def is_bot_api_ok(self) -> bool:
+        try:
+            req = requests.get(BOT_API, timeout=5)
+            return req.status_code == 401
+        except Exception:
+            return False
 
     @staticmethod
     def load_module(import_name: str) -> None:

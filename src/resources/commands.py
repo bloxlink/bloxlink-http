@@ -4,6 +4,7 @@ import logging
 import hikari
 from .models import CommandContext
 from .response import Response
+from .diagnostics import report_error
 from .exceptions import *
 from config import DISCORD_APPLICATION_ID
 from typing import Any, Callable
@@ -159,7 +160,9 @@ async def try_command(fn: Callable, response: Response):
     except RobloxDown:
         await response.send("Roblox appears to be down, so I was unable to process your command. "
                             "Please try again in a few minutes.")
-
+    except Exception as ex:
+        await response.edit_or_send("An error seems to have occurred, we have reported it!")
+        # await report_error(ex, "...error details")
 
 class Command:
     def __init__(
