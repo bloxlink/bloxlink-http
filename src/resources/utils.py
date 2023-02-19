@@ -2,7 +2,7 @@ from enum import Enum
 import aiohttp, asyncio
 
 from requests.utils import requote_uri
-from .secrets import PROXY_URL
+from .secrets import PROXY_URL, BOT_API, BOT_API_AUTH
 from .exceptions import RobloxAPIError, RobloxDown, RobloxNotFound
 from json import loads
 
@@ -39,7 +39,13 @@ async def fetch(
     if not session:
         session = aiohttp.ClientSession()
 
-    if proxy and PROXY_URL and "roblox.com" in url:
+    is_roblox = "roblox.com" in url
+    is_bot_api = BOT_API in url
+
+    if is_bot_api:
+        headers["Authentication"]
+
+    if proxy and PROXY_URL and is_roblox:
         old_url = url
         new_json["url"] = url
         new_json["data"] = body or {}
@@ -50,6 +56,9 @@ async def fetch(
     else:
         new_json = body
         old_url = url
+
+    if is_bot_api:
+        headers["Authorization"] = BOT_API_AUTH
 
     url = requote_uri(url)
 
@@ -81,6 +90,7 @@ async def fetch(
                 response_body = None
 
             if raise_on_failure:
+                # TODO: These Roblox specific errors should only be omitted whee is_roblox.
                 if response_status == 503:
                     raise RobloxDown()
                 elif response_status == 404:
