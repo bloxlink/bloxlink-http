@@ -1,4 +1,5 @@
 import math
+from itertools import islice
 
 import hikari
 
@@ -65,7 +66,7 @@ class Paginator:
         max_items = (
             len(self.items) if (offset + self.max_items >= len(self.items)) else offset + self.max_items
         )
-        return self.items[offset:max_items]
+        return list(islice(self.items, offset, max_items))
 
     @property
     async def embed(self) -> hikari.Embed:
