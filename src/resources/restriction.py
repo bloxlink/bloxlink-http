@@ -4,13 +4,14 @@ from typing import Literal
 
 import hikari
 
+import resources.prompts as prompts
 import resources.roblox.users as users
-from resources.bloxlink import instance as bloxlink, UserData
+from resources.bloxlink import UserData
+from resources.bloxlink import instance as bloxlink
 from resources.constants import RED_COLOR
 from resources.exceptions import UserNotVerified
-from resources.utils import default_field
-import resources.prompts as prompts
 from resources.roblox.groups import RobloxGroup
+from resources.utils import default_field
 
 
 @define
@@ -259,13 +260,14 @@ async def check_guild_restrictions(guild_id: hikari.Snowflake, user_info: dict) 
             user_roleset = group_match.user_roleset["rank"]
             for roleset in required_rolesets:
                 if isinstance(roleset, list):
-                    # within range
-                    if roleset[0] <= user_roleset <= roleset[1]:
+                    # List of accepted role IDs.
+                    if user_roleset in roleset:
                         break
-                else:
+                elif isinstance(roleset, int):
                     # exact match (x) or inverse match (rolesets above x)
                     if (user_roleset == roleset) or (roleset < 0 and abs(roleset) <= user_roleset):
                         break
+
             else:
                 # no match was found - restrict the user.
                 return Restriction(
