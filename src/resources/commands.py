@@ -3,14 +3,14 @@ from __future__ import annotations
 import logging
 import re
 from typing import Any, Callable
-from attrs import define
 
 import hikari
+from attrs import define
 
-from resources.exceptions import *
-from resources.response import Response, PromptCustomID
-from resources.secrets import DISCORD_APPLICATION_ID  # pylint: disable=no-name-in-module
 from resources.component_helper import parse_custom_id
+from resources.exceptions import *
+from resources.response import PromptCustomID, Response
+from resources.secrets import DISCORD_APPLICATION_ID  # pylint: disable=no-name-in-module
 
 command_name_pattern = re.compile("(.+)Command")
 
@@ -163,6 +163,7 @@ async def handle_interaction(interaction: hikari.Interaction):
             "Please try again in a few minutes."
         )
 
+
 async def handle_command(interaction: hikari.CommandInteraction, response: Response):
     """Handle a command interaction."""
     command_name = interaction.command_name
@@ -261,7 +262,10 @@ async def handle_component(interaction: hikari.ComponentInteraction, response: R
         for command_prompt in command.prompts:
             parsed_custom_id = parse_custom_id(PromptCustomID, custom_id)
 
-            if parsed_custom_id.command_name == command.name and parsed_custom_id.prompt_name == command_prompt.__name__:
+            if (
+                parsed_custom_id.command_name == command.name
+                and parsed_custom_id.prompt_name == command_prompt.__name__
+            ):
                 new_prompt = command_prompt(command.name, response)
                 new_prompt.insert_pages(command_prompt)
 
