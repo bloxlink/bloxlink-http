@@ -222,7 +222,8 @@ async def grouplock_view_paginator(
         entries.append(join_bind_strings(entry_items))
 
     lim = len(entries) // 2
-    embed.add_field("-" * 24, "\n\n".join(entries[:lim]), inline=True)
+    if lim != 0:
+        embed.add_field("-" * 24, "\n\n".join(entries[:lim]), inline=True)
     embed.add_field("-" * 24, "\n\n".join(entries[lim:]), inline=True)
 
     return embed
