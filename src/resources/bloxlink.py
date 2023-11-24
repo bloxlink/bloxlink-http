@@ -4,7 +4,6 @@ import importlib
 import json
 import logging
 import uuid
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from inspect import iscoroutinefunction
 from typing import Callable, Coroutine, Literal, Optional
@@ -12,6 +11,7 @@ from typing import Callable, Coroutine, Literal, Optional
 import hikari
 import redis.asyncio as redis  # pylint: disable=import-error
 import yuyo
+from attrs import define
 from motor.motor_asyncio import AsyncIOMotorClient
 
 logger = logging.getLogger()
@@ -61,7 +61,7 @@ class GuildData:
     premium: dict = None
 
 
-@dataclass(slots=True)
+@define(slots=True)
 class GroupLock:
     """Representation of a grouplock entry."""
 
