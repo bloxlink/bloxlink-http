@@ -268,7 +268,7 @@ def component_author_validation(author_segment: int = 2, ephemeral: bool = True,
             if str(interaction.member.id) != author_id:
                 # Could just silently fail too... Can't defer before here or else the eph response
                 # fails to show up.
-                return (
+                yield (
                     interaction.build_response(hikari.ResponseType.MESSAGE_CREATE)
                     .set_content(
                         f"You {f'(<@{interaction.member.id}>) ' if not ephemeral else ''}"
@@ -276,6 +276,7 @@ def component_author_validation(author_segment: int = 2, ephemeral: bool = True,
                     )
                     .set_flags(hikari.MessageFlag.EPHEMERAL if ephemeral else None)
                 )
+                return
             else:
                 if defer:
                     await interaction.create_initial_response(
@@ -284,7 +285,12 @@ def component_author_validation(author_segment: int = 2, ephemeral: bool = True,
                     )
 
             # Trigger original method
-            return await func(commands.build_context(interaction))
+            generator_or_coroutine = func(commands.build_context(interaction))
+            if hasattr(generator_or_coroutine, "__anext__"):
+                async for generator_response in generator_or_coroutine:
+                    yield generator_response
+            else:
+                await generator_or_coroutine
 
         return response_wrapper
 
