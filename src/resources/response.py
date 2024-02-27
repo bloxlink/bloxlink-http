@@ -14,12 +14,57 @@ from pydantic import Field
 import resources.ui.components as Components
 import resources.ui.modals as modal
 from resources.bloxlink import instance as bloxlink
+from resources.ui.components import RoleSelectMenu, TextSelectMenu
 from resources.ui.embeds import InteractiveMessage
 
 from .exceptions import CancelCommand, PageNotFound
 
 if TYPE_CHECKING:
     from resources.ui.autocomplete import AutocompleteOption
+
+
+class PromptComponents:
+    """Container for generic components that prompts may use."""
+
+    @staticmethod
+    def discord_role_selector(
+        *, placeholder="Choose a Discord role", min_value=0, max_value=25, component_id="discord_role"
+    ) -> RoleSelectMenu:
+        """Create a discord role selection component for a prompt."""
+        return RoleSelectMenu(
+            placeholder=placeholder,
+            min_values=min_value,
+            max_values=max_value,
+            component_id=component_id,
+        )
+
+    @staticmethod
+    def group_rank_selector(
+        *,
+        group_rolesets: "dict" = None,
+        placeholder="Choose a group rank",
+        min_value=0,
+        max_value=25,
+        component_id="group_rank",
+    ) -> TextSelectMenu:
+        """Create a group rank/roleset selection menu for a prompt."""
+        if not group_rolesets:
+            raise ValueError("A list of group rolesets is required when using group_rank_selector.")
+
+        return TextSelectMenu(
+            placeholder=placeholder,
+            min_values=min_value,
+            max_values=max_value,
+            component_id=component_id,
+            options=[
+                TextSelectMenu.Option(
+                    label=str(roleset),
+                    value=str(roleset_id),
+                )
+                for roleset_id, roleset in group_rolesets.items()
+                if roleset_id != 0
+            ],
+        )
 
 
 class PromptEmbed(InteractiveMessage):
