@@ -28,13 +28,13 @@ class PromptComponents:
 
     @staticmethod
     def discord_role_selector(
-        *, placeholder="Choose a Discord role", min_value=0, max_value=25, component_id="discord_role"
+        *, placeholder="Choose a Discord role", min_values=0, max_values=25, component_id="discord_role"
     ) -> RoleSelectMenu:
         """Create a discord role selection component for a prompt."""
         return RoleSelectMenu(
             placeholder=placeholder,
-            min_values=min_value,
-            max_values=max_value,
+            min_values=min_values,
+            max_values=max_values,
             component_id=component_id,
         )
 
@@ -43,8 +43,8 @@ class PromptComponents:
         *,
         group_rolesets: "dict" = None,
         placeholder="Choose a group rank",
-        min_value=0,
-        max_value=25,
+        min_values=0,
+        max_values=25,
         component_id="group_rank",
     ) -> TextSelectMenu:
         """Create a group rank/roleset selection menu for a prompt."""
@@ -53,8 +53,8 @@ class PromptComponents:
 
         return TextSelectMenu(
             placeholder=placeholder,
-            min_values=min_value,
-            max_values=max_value,
+            min_values=min_values,
+            max_values=max_values,
             component_id=component_id,
             options=[
                 TextSelectMenu.Option(
