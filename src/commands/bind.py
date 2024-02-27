@@ -9,7 +9,7 @@ from resources.binds import create_bind
 from resources.bloxlink import instance as bloxlink
 from resources.commands import CommandContext, GenericCommand
 from resources.exceptions import BindConflictError, RobloxNotFound
-from resources.response import Prompt, PromptCustomID, PromptPageData
+from resources.response import Prompt, PromptComponents, PromptCustomID, PromptPageData
 from resources.ui.components import Button, RoleSelectMenu, TextSelectMenu
 
 
@@ -152,12 +152,7 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
             description=f"Please select a Discord role to give to users who own this {bind_type}. "
             "No existing Discord role? No problem, just click `Create new role`.",
             components=[
-                RoleSelectMenu(
-                    placeholder="Choose a Discord role",
-                    min_values=1,
-                    max_values=25,
-                    component_id="discord_role",
-                ),
+                PromptComponents.discord_role_selector(min_values=1),
                 # Button(
                 #     label="Create new role",
                 #     component_id="new_role",
