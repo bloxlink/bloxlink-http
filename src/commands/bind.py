@@ -288,7 +288,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 )
 
                 await self.clear_data(
-                    "discord_role", "group_rank"
+                    "discord_role", "group_rank", "group_rank_1"
                 )  # clear the data so we can re-use the menu
 
                 prompt_fields = [
@@ -400,7 +400,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
         yield PromptPageData(
             title="Bind Group Rank",
-            description="Please select a group rank and corresponding Discord role. "
+            description="Please select one group rank and a corresponding Discord role to give. "
             "No existing Discord role? No problem, just click `Create new role`.",
             components=[
                 *PromptComponents.group_rank_selectors(roblox_group=roblox_group, max_values=1),
@@ -426,9 +426,28 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         current_data = await self.current_data()
 
         discord_role = current_data["discord_role"]["values"][0] if current_data.get("discord_role") else None
-        group_rank = current_data["group_rank"]["values"][0] if current_data.get("group_rank") else None
 
-        # TODO: Update logic to support multiple group rank components
+        # Require a selection from at least one, but not both, nor neither of them.
+        # Covers cases where a user selected then unselected an option.
+        if current_data.get("group_rank") and current_data.get("group_rank_1"):
+            total_selection = 0
+            total_selection += len(current_data["group_rank"]["values"])
+            total_selection += len(current_data["group_rank_1"]["values"])
+
+            if total_selection > 1 or total_selection == 0:
+                # TODO: Are we able to send a reply to the user saying they can't do this?
+                await self.ack()
+                return
+
+        group_rank = (
+            current_data["group_rank"]["values"][0]
+            if current_data.get("group_rank") and current_data["group_rank"]["values"]
+            else (
+                current_data["group_rank_1"]["values"][0]
+                if current_data.get("group_rank_1") and current_data["group_rank_1"]["values"]
+                else None
+            )
+        )
 
         if discord_role and group_rank:
             existing_pending_binds: list[GuildBind] = [
@@ -459,7 +478,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             )
             yield await self.go_to(self.current_binds)
 
-        if fired_component_id in ("group_rank", "discord_role"):
+        if fired_component_id in ("group_rank", "discord_role", "group_rank_1"):
             await self.ack()
 
     @Prompt.programmatic_page()
