@@ -39,32 +39,60 @@ class PromptComponents:
         )
 
     @staticmethod
-    def group_rank_selector(
+    def group_rank_selectors(
         *,
-        group_rolesets: "dict" = None,
+        roblox_group: "RobloxGroup" = None,
         placeholder="Choose a group rank",
         min_values=0,
-        max_values=25,
-        component_id="group_rank",
-    ) -> TextSelectMenu:
-        """Create a group rank/roleset selection menu for a prompt."""
-        if not group_rolesets:
-            raise ValueError("A list of group rolesets is required when using group_rank_selector.")
+        max_values=2,
+        component_id_base="group_rank",
+    ) -> list[TextSelectMenu]:
+        """Create a group rank/roleset selection menu for a prompt.
 
-        return TextSelectMenu(
-            placeholder=placeholder,
-            min_values=min_values,
-            max_values=max_values,
-            component_id=component_id,
-            options=[
-                TextSelectMenu.Option(
-                    label=str(roleset),
-                    value=str(roleset_id),
+        component_id_base establishes what the component ID will be for the selection menus. The first
+        menu will be the component_id_base, an additional selector will be suffixed with _1.
+
+        ex: "group_rank" for the first select menu, "group_rank_1" for an additional select menu.
+        """
+        if not roblox_group:
+            raise ValueError("A roblox_group is required when using group_rank_selector.")
+
+        final_components = [
+            TextSelectMenu(
+                placeholder=placeholder,
+                min_values=min_values,
+                max_values=max_values,
+                component_id=component_id_base,
+                options=[
+                    TextSelectMenu.Option(
+                        label=str(roleset),
+                        value=str(roleset_id),
+                    )
+                    for roleset_id, roleset in roblox_group.rolesets[:25].items()
+                    if roleset_id != 0
+                ],
+            )
+        ]
+
+        if len(roblox_group.rolesets) > 25:
+            final_components.append(
+                TextSelectMenu(
+                    placeholder=placeholder,
+                    min_values=min_values,
+                    max_values=max_values,
+                    component_id=f"{component_id_base}_1",
+                    options=[
+                        TextSelectMenu.Option(
+                            label=str(roleset),
+                            value=str(roleset_id),
+                        )
+                        for roleset_id, roleset in roblox_group.rolesets[25:].items()
+                        if roleset_id != 0
+                    ],
                 )
-                for roleset_id, roleset in group_rolesets.items()
-                if roleset_id != 0
-            ],
-        )
+            )
+
+        return final_components
 
 
 class PromptEmbed(InteractiveMessage):
