@@ -1,22 +1,22 @@
-import json
-import uuid
-import logging
 import functools
-from typing import Callable, Generic, Type, TypeVar, TYPE_CHECKING, Any
+import json
+import logging
+import uuid
 from datetime import timedelta
+from typing import TYPE_CHECKING, Any, Callable, Generic, Type, TypeVar
 
 import hikari
 from pydantic import Field
 from bloxlink_lib import BaseModel, UNDEFINED
 from bloxlink_lib.database import redis
+from pydantic import Field
 
 import resources.ui.components as Components
+import resources.ui.modals as modal
 from resources.bloxlink import instance as bloxlink
 from resources.ui.embeds import InteractiveMessage
-import resources.ui.modals as modal
 
 from .exceptions import CancelCommand, PageNotFound
-
 
 if TYPE_CHECKING:
     from resources.ui.autocomplete import AutocompleteOption
@@ -26,8 +26,6 @@ class PromptEmbed(InteractiveMessage):
     """Represents a prompt consisting of an embed & components for the message."""
 
     page_number: int = 0
-
-
 
 
 class PromptCustomID(Components.CommandCustomID):
@@ -51,7 +49,7 @@ class PromptPageData(BaseModel):
     fields: list["Field"] = Field(default_factory=list)
     color: int = None
 
-    class Field(BaseModel): # TODO: RENAME THIS TO PromptField
+    class Field(BaseModel):  # TODO: RENAME THIS TO PromptField
         """Represents a field in a prompt embed."""
 
         name: str
@@ -82,7 +80,9 @@ class Response:
         deferred (bool): Is this response a deferred response. Default is False.
     """
 
-    def __init__(self, interaction: hikari.CommandInteraction | hikari.ComponentInteraction | hikari.ModalInteraction):
+    def __init__(
+        self, interaction: hikari.CommandInteraction | hikari.ComponentInteraction | hikari.ModalInteraction
+    ):
         self.interaction = interaction
         self.user_id = interaction.user.id
         self.responded = False
@@ -143,7 +143,11 @@ class Response:
         logging.debug("responded=%s", self.responded)
 
         if components and build_components:
-            components = Components.clean_action_rows(functools.reduce(lambda a, c: c.build(a), components, [bloxlink.rest.build_message_action_row()]))
+            components = Components.clean_action_rows(
+                functools.reduce(
+                    lambda a, c: c.build(a), components, [bloxlink.rest.build_message_action_row()]
+                )
+            )
 
         if self.responded:
             if edit_original:
@@ -157,17 +161,23 @@ class Response:
 
         match self.interaction:
             case hikari.CommandInteraction() | hikari.ModalInteraction():
-                response_builder = self.interaction.build_response().set_flags(
-                    hikari.messages.MessageFlag.EPHEMERAL if ephemeral else None
-                ).set_mentions_everyone(False).set_role_mentions(False)
+                response_builder = (
+                    self.interaction.build_response()
+                    .set_flags(hikari.messages.MessageFlag.EPHEMERAL if ephemeral else None)
+                    .set_mentions_everyone(False)
+                    .set_role_mentions(False)
+                )
             case hikari.ComponentInteraction():
-                response_builder = self.interaction.build_response(
-                    hikari.ResponseType.MESSAGE_CREATE
-                    if not edit_original
-                    else hikari.ResponseType.MESSAGE_UPDATE
-                ).set_flags(
-                    hikari.messages.MessageFlag.EPHEMERAL if ephemeral else None
-                ).set_mentions_everyone(False).set_role_mentions(False)
+                response_builder = (
+                    self.interaction.build_response(
+                        hikari.ResponseType.MESSAGE_CREATE
+                        if not edit_original
+                        else hikari.ResponseType.MESSAGE_UPDATE
+                    )
+                    .set_flags(hikari.messages.MessageFlag.EPHEMERAL if ephemeral else None)
+                    .set_mentions_everyone(False)
+                    .set_role_mentions(False)
+                )
 
             case _:
                 raise NotImplementedError()
@@ -230,22 +240,20 @@ class Response:
             raise ValueError("Cannot specify both channel and channel_id.")
 
         if components and build_components:
-            components = Components.clean_action_rows(functools.reduce(lambda a, c: c.build(a), components, [bloxlink.rest.build_message_action_row()]))
+            components = Components.clean_action_rows(
+                functools.reduce(
+                    lambda a, c: c.build(a), components, [bloxlink.rest.build_message_action_row()]
+                )
+            )
 
         if channel:
-            return await channel.send(content,
-                                      components=components,
-                                      mentions_everyone=False,
-                                      role_mentions=False,
-                                      **kwargs)
+            return await channel.send(
+                content, components=components, mentions_everyone=False, role_mentions=False, **kwargs
+            )
 
         if channel_id:
             return await (await bloxlink.rest.fetch_channel(channel_id)).send(
-                content,
-                components=components,
-                mentions_everyone=False,
-                role_mentions=False,
-                **kwargs
+                content, components=components, mentions_everyone=False, role_mentions=False, **kwargs
             )
 
         if ephemeral:
@@ -257,26 +265,18 @@ class Response:
 
             kwargs.pop("flags", None)  # edit_initial_response doesn't support ephemeral
 
-            return await self.interaction.edit_initial_response(
-                content, components=components, **kwargs
-            )
+            return await self.interaction.edit_initial_response(content, components=components, **kwargs)
 
         if self.responded:
-            return await self.interaction.execute(content,
-                                                  components=components,
-                                                  mentions_everyone=False,
-                                                  role_mentions=False,
-                                                  **kwargs)
+            return await self.interaction.execute(
+                content, components=components, mentions_everyone=False, role_mentions=False, **kwargs
+            )
 
         self.responded = True
 
         if edit_original:
             return await self.interaction.edit_initial_response(
-                content,
-                components=components,
-                mentions_everyone=False,
-                role_mentions=False,
-                **kwargs
+                content, components=components, mentions_everyone=False, role_mentions=False, **kwargs
             )
 
         await self.interaction.create_initial_response(
@@ -285,13 +285,18 @@ class Response:
             components=components,
             mentions_everyone=False,
             role_mentions=False,
-            **kwargs
+            **kwargs,
         )
 
         if fetch_message:
             return await self.interaction.fetch_initial_response()
 
-    async def edit_message(self, content: str = None, embed: hikari.Embed = None, components: list[hikari.ActionRowComponent] = None):
+    async def edit_message(
+        self,
+        content: str = None,
+        embed: hikari.Embed = None,
+        components: list[hikari.ActionRowComponent] = None,
+    ):
         """Edit the original message of the interaction."""
 
         message = self.interaction.message
@@ -307,8 +312,7 @@ class Response:
 
         await Components.set_components(message, components=components)
 
-
-    async def send_modal(self, modal: 'modal.Modal'):
+    async def send_modal(self, modal: "modal.Modal"):
         """Send a modal response. This needs to be yielded."""
 
         # check if the modal was already submitted
@@ -325,7 +329,7 @@ class Response:
 
         return modal.builder
 
-    def send_autocomplete(self, items: list['AutocompleteOption']):
+    def send_autocomplete(self, items: list["AutocompleteOption"]):
         """Send an autocomplete response to Discord. Limited to 25 items."""
 
         return self.interaction.build_response(
@@ -335,7 +339,10 @@ class Response:
     async def send_prompt(self, prompt: Type["Prompt"], custom_id_data: dict = None):
         """Prompt the user with the first page of the prompt."""
 
-        if self.interaction.type not in (hikari.InteractionType.APPLICATION_COMMAND, hikari.InteractionType.MODAL_SUBMIT):
+        if self.interaction.type not in (
+            hikari.InteractionType.APPLICATION_COMMAND,
+            hikari.InteractionType.MODAL_SUBMIT,
+        ):
             raise NotImplementedError("Can only call prompt() from a slash command or modal.")
 
         new_prompt = await prompt.new_prompt(
@@ -349,8 +356,9 @@ class Response:
         hash_ = uuid.uuid4().hex
         logging.debug("prompt() hash=%s", hash_)
 
-        return await new_prompt.run_page(custom_id_data, hash_=hash_, changing_page=True, initial_prompt=True).__anext__()
-
+        return await new_prompt.run_page(
+            custom_id_data, hash_=hash_, changing_page=True, initial_prompt=True
+        ).__anext__()
 
     async def send_premium_upsell(self, raise_exception=True):
         """Send a premium upsell message. This cancels out of the command."""
@@ -385,7 +393,7 @@ class Prompt(Generic[T]):
         self.guild_id = response.interaction.guild_id
         self.start_with_fresh_data = start_with_fresh_data
 
-        self.custom_id: T = None # this is set in prompt.new_prompt()
+        self.custom_id: T = None  # this is set in prompt.new_prompt()
 
         self.edited = False
 
@@ -393,7 +401,7 @@ class Prompt(Generic[T]):
 
     @staticmethod
     async def new_prompt(
-        prompt_instance: Type['Prompt'],
+        prompt_instance: Type["Prompt"],
         interaction: hikari.ComponentInteraction | hikari.CommandInteraction,
         command_name: str,
         response: Response,
@@ -463,7 +471,10 @@ class Prompt(Generic[T]):
         )
 
         # the message will only exist if this is a component interaction
-        if isinstance(self.response.interaction, hikari.ComponentInteraction) and not self.custom_id.prompt_message_id:
+        if (
+            isinstance(self.response.interaction, hikari.ComponentInteraction)
+            and not self.custom_id.prompt_message_id
+        ):
             self.custom_id.prompt_message_id = self.response.interaction.message.id
 
         self.custom_id.page_number = page.page_number
@@ -478,7 +489,13 @@ class Prompt(Generic[T]):
                 )
                 component.custom_id = component_custom_id
 
-            action_rows = Components.clean_action_rows(functools.reduce(lambda a, c: c.build(a), page.details.components, [bloxlink.rest.build_message_action_row()]))
+            action_rows = Components.clean_action_rows(
+                functools.reduce(
+                    lambda a, c: c.build(a),
+                    page.details.components,
+                    [bloxlink.rest.build_message_action_row()],
+                )
+            )
 
         if page.details.fields:
             for field in page.details.fields:
@@ -575,17 +592,22 @@ class Prompt(Generic[T]):
             logging.debug(hash_, "generator_response entry_point()", generator_response)
             yield generator_response
 
-    async def run_page(self, custom_id_data: dict = None, hash_=None, changing_page=False, initial_prompt=False):
+    async def run_page(
+        self, custom_id_data: dict = None, hash_=None, changing_page=False, initial_prompt=False
+    ):
         """Run the current page."""
 
         hash_ = hash_ or uuid.uuid4().hex
 
         self.current_page = self.pages[self.current_page_number]
 
-        logging.debug(hash_, "run_page() current page=", self.current_page_number, self.current_page.details.title)
+        logging.debug(
+            hash_, "run_page() current page=", self.current_page_number, self.current_page.details.title
+        )
 
         generator_or_coroutine = self.current_page.func(
-            self.response.interaction, self.custom_id.component_custom_id if self.custom_id and not changing_page else None
+            self.response.interaction,
+            self.custom_id.component_custom_id if self.custom_id and not changing_page else None,
         )
 
         # if this is a programmatic page, we need to run it first
@@ -612,7 +634,10 @@ class Prompt(Generic[T]):
             # prompt() requires below send_first, but entry_point() doesn't since it calls other functions
             if initial_prompt:
                 yield await self.response.send_first(
-                    embed=built_page.embed, components=built_page.action_rows, edit_original=True, build_components=False
+                    embed=built_page.embed,
+                    components=built_page.action_rows,
+                    edit_original=True,
+                    build_components=False,
                 )
                 return
 
@@ -766,7 +791,6 @@ class Prompt(Generic[T]):
                     component.is_disabled = True
 
             await Components.set_components(message, components=message.components)
-
 
     async def ack(self):
         """Acknowledge the interaction. This should be used if no response will be sent."""
