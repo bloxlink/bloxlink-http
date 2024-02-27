@@ -403,31 +403,8 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             description="Please select a group rank and corresponding Discord role. "
             "No existing Discord role? No problem, just click `Create new role`.",
             components=[
-                TextSelectMenu(
-                    placeholder="Choose group rank",
-                    min_values=0,
-                    max_values=1,
-                    component_id="group_rank",
-                    options=[
-                        TextSelectMenu.Option(
-                            label=str(roleset),
-                            value=str(roleset_id),
-                        )
-                        for roleset_id, roleset in roblox_group.rolesets.items()
-                        if roleset_id != 0
-                    ],
-                ),
-                RoleSelectMenu(
-                    placeholder="Choose a Discord role",
-                    min_values=0,
-                    max_values=1,
-                    component_id="discord_role",
-                ),
-                # Button(
-                #     label="Create new role",
-                #     component_id="new_role",
-                #     is_disabled=False,
-                # ),
+                *PromptComponents.group_rank_selectors(roblox_group=roblox_group, max_values=1),
+                PromptComponents.discord_role_selector(min_values=1, max_values=1),
             ],
         )
 
@@ -450,6 +427,8 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
         discord_role = current_data["discord_role"]["values"][0] if current_data.get("discord_role") else None
         group_rank = current_data["group_rank"]["values"][0] if current_data.get("group_rank") else None
+
+        # TODO: Update logic to support multiple group rank components
 
         if discord_role and group_rank:
             existing_pending_binds: list[GuildBind] = [
@@ -501,26 +480,8 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             title="Bind Group Rank And Above",
             description="Please choose the **lowest rank** for this bind. Everyone with this rank **and above** will be given this role.",
             components=[
-                TextSelectMenu(
-                    placeholder="Choose group rank",
-                    min_values=1,
-                    max_values=1,
-                    component_id="group_rank",
-                    options=[
-                        TextSelectMenu.Option(
-                            label=str(roleset),
-                            value=str(roleset_id),
-                        )
-                        for roleset_id, roleset in roblox_group.rolesets.items()
-                        if roleset_id != 0
-                    ],
-                ),
-                RoleSelectMenu(
-                    placeholder="Choose a Discord role",
-                    min_values=0,
-                    max_values=1,
-                    component_id="discord_role",
-                ),
+                *PromptComponents.group_rank_selectors(roblox_group=roblox_group, max_values=1),
+                PromptComponents.discord_role_selector(min_values=1, max_values=1)
                 # Button(
                 #     label="Create new role",
                 #     component_id="new_role",
@@ -594,26 +555,8 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             description="Please select two group ranks and a corresponding Discord role to give. "
             "No existing Discord role? No problem, just click `Create new role`.",
             components=[
-                TextSelectMenu(
-                    placeholder="Choose your group ranks",
-                    min_values=2,
-                    max_values=2,
-                    component_id="group_rank",
-                    options=[
-                        TextSelectMenu.Option(
-                            label=str(roleset),
-                            value=str(roleset_id),
-                        )
-                        for roleset_id, roleset in roblox_group.rolesets.items()
-                        if roleset_id != 0
-                    ],
-                ),
-                RoleSelectMenu(
-                    placeholder="Choose a Discord role",
-                    min_values=1,
-                    max_values=1,
-                    component_id="discord_role",
-                ),
+                *PromptComponents.group_rank_selectors(roblox_group=roblox_group, max_values=2),
+                PromptComponents.discord_role_selector(min_values=1, max_values=1),
                 # Button(
                 #     label="Create new role",
                 #     component_id="new_role",
@@ -691,12 +634,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             description=f"Please select a Discord role to give to {desc_stem}. "
             "No existing Discord role? No problem, just click `Create new role`.",
             components=[
-                RoleSelectMenu(
-                    placeholder="Choose a Discord role",
-                    min_values=0,
-                    max_values=1,
-                    component_id="discord_role",
-                ),
+                PromptComponents.discord_role_selector(min_values=0, max_values=1),
                 # Button(
                 #     label="Create new role",
                 #     component_id="new_role",
