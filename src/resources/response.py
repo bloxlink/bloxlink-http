@@ -1,4 +1,5 @@
 import functools
+import itertools
 import json
 import logging
 import uuid
@@ -50,43 +51,35 @@ class PromptComponents:
         """Create a group rank/roleset selection menu for a prompt.
 
         component_id_base establishes what the component ID will be for the selection menus. The first
-        menu will be the component_id_base, an additional selector will be suffixed with _1.
+        menu will be the component_id_base, the IDs for any additional menus will be suffixed by the
+        position of it (so `{component_id_base}_N` by default).
 
         ex: "group_rank" for the first select menu, "group_rank_1" for an additional select menu.
         """
         if not roblox_group:
             raise ValueError("A roblox_group is required when using group_rank_selector.")
 
-        final_components = [
-            TextSelectMenu(
-                placeholder=placeholder,
-                min_values=min_values,
-                max_values=max_values,
-                component_id=component_id_base,
-                options=[
-                    TextSelectMenu.Option(
-                        label=str(roleset),
-                        value=str(roleset_id),
-                    )
-                    for roleset_id, roleset in roblox_group.rolesets[:25].items()
-                    if roleset_id != 0
-                ],
-            )
-        ]
+        final_components = []
 
-        if len(roblox_group.rolesets) > 25:
+        roleset_iterations = (len(roblox_group.rolesets) // 25) + 1
+        group_rolesets = roblox_group.rolesets.items()
+
+        for i in range(roleset_iterations):
+            offset = i * 25
+            roleset_chunk = itertools.islice(group_rolesets, offset, offset + 25)
+
             final_components.append(
                 TextSelectMenu(
                     placeholder=placeholder,
                     min_values=min_values,
                     max_values=max_values,
-                    component_id=f"{component_id_base}_1",
+                    component_id=component_id_base if offset == 0 else f"{component_id_base}_{i}",
                     options=[
                         TextSelectMenu.Option(
                             label=str(roleset),
                             value=str(roleset_id),
                         )
-                        for roleset_id, roleset in roblox_group.rolesets[25:].items()
+                        for roleset_id, roleset in roleset_chunk
                         if roleset_id != 0
                     ],
                 )
