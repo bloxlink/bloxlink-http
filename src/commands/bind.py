@@ -1,16 +1,16 @@
+from abc import ABC
 from typing import Literal
 
-from abc import ABC
 import hikari
+from bloxlink_lib import GuildBind, build_binds_desc, get_badge, get_catalog_asset, get_gamepass, get_group
 from hikari.commands import CommandOption, OptionType
 
-from bloxlink_lib import get_group, get_badge, get_gamepass, get_catalog_asset, GuildBind, build_binds_desc
 from resources.binds import create_bind
 from resources.bloxlink import instance as bloxlink
 from resources.commands import CommandContext, GenericCommand
-from resources.ui.components import Button, RoleSelectMenu, TextSelectMenu
 from resources.exceptions import BindConflictError, RobloxNotFound
 from resources.response import Prompt, PromptCustomID, PromptPageData
+from resources.ui.components import Button, RoleSelectMenu, TextSelectMenu
 
 
 class GenericBindPromptCustomID(PromptCustomID, ABC):
@@ -20,7 +20,6 @@ class GenericBindPromptCustomID(PromptCustomID, ABC):
     entity_type: str
 
 
-
 class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
     """Generic prompt for binding Roblox entities to Discord roles."""
 
@@ -28,7 +27,8 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
 
     def __init__(self, *args, **kwargs):
         super().__init__(
-            *args, **kwargs,
+            *args,
+            **kwargs,
             custom_id_format=GenericBindPromptCustomID,
             start_with_fresh_data=False,
         )
@@ -41,7 +41,9 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
     ):
         """Default page for the prompt. Shows users what binds they have made, and unsaved binds if any."""
 
-        new_binds = [GuildBind(**b) for b in (await self.current_data(raise_exception=False)).get("pending_binds", [])]
+        new_binds = [
+            GuildBind(**b) for b in (await self.current_data(raise_exception=False)).get("pending_binds", [])
+        ]
 
         bind_type = self.custom_id.entity_type
 
@@ -105,9 +107,7 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                 ]
 
                 if new_binds:
-                    unsaved_binds = "\n".join(
-                        [str(bind) for bind in new_binds]
-                    )
+                    unsaved_binds = "\n".join([str(bind) for bind in new_binds])
                     # print(unsaved_binds)
 
                     prompt_fields.append(
@@ -185,7 +185,9 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
 
         # TODO: Handle "create new role" logic. Can't exit the prompt with that set currently.
         if discord_role:
-            existing_pending_binds: list[GuildBind] = [GuildBind(**b) for b in current_data.get("pending_binds", [])]
+            existing_pending_binds: list[GuildBind] = [
+                GuildBind(**b) for b in current_data.get("pending_binds", [])
+            ]
             existing_pending_binds.append(
                 GuildBind(
                     roles=[discord_role],
@@ -193,11 +195,15 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                     criteria={
                         "type": bind_type,
                         "id": bind_id,
-                    }
+                    },
                 )
             )
 
-            await self.save_stateful_data(pending_binds=[b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds])
+            await self.save_stateful_data(
+                pending_binds=[
+                    b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds
+                ]
+            )
             await self.response.send(
                 "Bind added to your in-progress workflow. Click `Publish` to save your changes.",
                 ephemeral=True,
@@ -219,7 +225,8 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
     def __init__(self, *args, **kwargs):
         super().__init__(
-            *args, **kwargs,
+            *args,
+            **kwargs,
             custom_id_format=GroupPromptCustomID,
             start_with_fresh_data=False,
         )
@@ -232,7 +239,9 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
     ):
         """Default page for the prompt. Shows users what binds they have made, and unsaved binds if any."""
 
-        new_binds = [GuildBind(**b) for b in (await self.current_data(raise_exception=False)).get("pending_binds", [])]
+        new_binds = [
+            GuildBind(**b) for b in (await self.current_data(raise_exception=False)).get("pending_binds", [])
+        ]
 
         match fired_component_id:
             case "new_bind":
@@ -298,9 +307,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 if new_binds:
                     # print(new_binds)
                     # print(typed_new_binds)
-                    unsaved_binds = "\n".join(
-                        [str(bind) for bind in new_binds]
-                    )
+                    unsaved_binds = "\n".join([str(bind) for bind in new_binds])
                     # print(unsaved_binds)
 
                     prompt_fields.append(
@@ -450,7 +457,9 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         group_rank = current_data["group_rank"]["values"][0] if current_data.get("group_rank") else None
 
         if discord_role and group_rank:
-            existing_pending_binds: list[GuildBind] = [GuildBind(**b) for b in current_data.get("pending_binds", [])]
+            existing_pending_binds: list[GuildBind] = [
+                GuildBind(**b) for b in current_data.get("pending_binds", [])
+            ]
             existing_pending_binds.append(
                 GuildBind(
                     roles=[discord_role],
@@ -460,12 +469,16 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                         "id": group_id,
                         "group": {
                             "roleset": int(group_rank),
-                        }
-                    }
+                        },
+                    },
                 )
             )
 
-            await self.save_stateful_data(pending_binds=[b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds])
+            await self.save_stateful_data(
+                pending_binds=[
+                    b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds
+                ]
+            )
             await self.response.send(
                 "Bind added to your in-progress workflow. Click `Publish` to save your changes.",
                 ephemeral=True,
@@ -542,7 +555,9 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         group_rank = current_data["group_rank"]["values"][0] if current_data.get("group_rank") else None
 
         if discord_role and group_rank:
-            existing_pending_binds: list[GuildBind] = [GuildBind(**b) for b in current_data.get("pending_binds", [])]
+            existing_pending_binds: list[GuildBind] = [
+                GuildBind(**b) for b in current_data.get("pending_binds", [])
+            ]
             existing_pending_binds.append(
                 GuildBind(
                     roles=[discord_role],
@@ -551,13 +566,17 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                         "type": "group",
                         "id": group_id,
                         "group": {
-                            "roleset": int(group_rank) * -1, # negative rank means "current rank and above"
-                        }
-                    }
+                            "roleset": int(group_rank) * -1,  # negative rank means "current rank and above"
+                        },
+                    },
                 )
             )
 
-            await self.save_stateful_data(pending_binds=[b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds])
+            await self.save_stateful_data(
+                pending_binds=[
+                    b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds
+                ]
+            )
             await self.response.send(
                 "Bind added to your in-progress workflow. Click `Publish` to save your changes.",
                 ephemeral=True,
@@ -626,10 +645,14 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         current_data = await self.current_data()
 
         discord_roles = current_data["discord_role"]["values"] if current_data.get("discord_role") else None
-        group_ranks = [int(x) for x in current_data["group_rank"]["values"]] if current_data.get("group_rank") else None
+        group_ranks = (
+            [int(x) for x in current_data["group_rank"]["values"]] if current_data.get("group_rank") else None
+        )
 
         if discord_roles and group_ranks:
-            existing_pending_binds: list[GuildBind] = [GuildBind(**b) for b in current_data.get("pending_binds", [])]
+            existing_pending_binds: list[GuildBind] = [
+                GuildBind(**b) for b in current_data.get("pending_binds", [])
+            ]
             existing_pending_binds.append(
                 GuildBind(
                     roles=discord_roles,
@@ -637,14 +660,15 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                     criteria={
                         "type": "group",
                         "id": group_id,
-                        "group": {
-                            "min": min(group_ranks),
-                            "max": max(group_ranks)
-                        }
-                    }
+                        "group": {"min": min(group_ranks), "max": max(group_ranks)},
+                    },
                 )
             )
-            await self.save_stateful_data(pending_binds=[b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds])
+            await self.save_stateful_data(
+                pending_binds=[
+                    b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds
+                ]
+            )
             await self.response.send(
                 "Bind added to your in-progress workflow. Click `Publish` to save your changes.",
                 ephemeral=True,
@@ -706,7 +730,9 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
         # TODO: Handle "create new role" logic. Can't exit the prompt with that set currently.
         if discord_role:
-            existing_pending_binds: list[GuildBind] = [GuildBind(**b) for b in current_data.get("pending_binds", [])]
+            existing_pending_binds: list[GuildBind] = [
+                GuildBind(**b) for b in current_data.get("pending_binds", [])
+            ]
             existing_pending_binds.append(
                 GuildBind(
                     roles=[discord_role],
@@ -716,11 +742,15 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                         "id": group_id,
                         "group": {
                             bind_flag: True,
-                        }
-                    }
+                        },
+                    },
                 )
             )
-            await self.save_stateful_data(pending_binds=[b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds])
+            await self.save_stateful_data(
+                pending_binds=[
+                    b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds
+                ]
+            )
             await self.response.send(
                 "Bind added to your in-progress workflow. Click `Publish` to save your changes.",
                 ephemeral=True,
@@ -738,15 +768,18 @@ class GroupRolesConfirmationPrompt(Prompt[GroupPromptCustomID]):
 
     def __init__(self, *args, **kwargs):
         super().__init__(
-            *args, **kwargs,
+            *args,
+            **kwargs,
             custom_id_format=GroupPromptCustomID,
         )
 
     @Prompt.page(
         PromptPageData(
             title="Role Creation Confirmation",
-            description=("Would you like Bloxlink to create Discord roles for each of your group's roles?\n\n**Please note, even if you "
-                         "choose 'no', the bind will still be created.**"),
+            description=(
+                "Would you like Bloxlink to create Discord roles for each of your group's roles?\n\n**Please note, even if you "
+                "choose 'no', the bind will still be created.**"
+            ),
             components=[
                 Button(
                     label="Yes",
@@ -765,7 +798,6 @@ class GroupRolesConfirmationPrompt(Prompt[GroupPromptCustomID]):
                 ),
             ],
         )
-
     )
     async def role_create_confirmation(
         self,
@@ -793,22 +825,23 @@ class GroupRolesConfirmationPrompt(Prompt[GroupPromptCustomID]):
 
             if fired_component_id != "cancel":
                 try:
-                    await create_bind(guild_id, bind_type="group", bind_id=self.custom_id.group_id, dynamic_roles=True)
+                    await create_bind(
+                        guild_id, bind_type="group", bind_id=self.custom_id.group_id, dynamic_roles=True
+                    )
                 except BindConflictError:
                     await self.response.send(
                         f"You already have a group binding for group [{group.name}](<{group.url}>). No changes were made.",
-                        edit_original=True
+                        edit_original=True,
                     )
                     return
 
                 await self.response.send(
                     f"Your group binding for group [{group.name}](<{group.url}>) has been saved. "
                     "When people join your server, they will receive a Discord role that corresponds to their group rank. ",
-                    edit_original=True
+                    edit_original=True,
                 )
             else:
                 await self.response.send("No changes were made.", edit_original=True)
-
 
 
 @bloxlink.command(
