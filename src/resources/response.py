@@ -10,6 +10,7 @@ import hikari
 from pydantic import Field
 from bloxlink_lib import BaseModel, UNDEFINED
 from bloxlink_lib.database import redis
+from bloxlink_lib.models.groups import RobloxGroup
 from pydantic import Field
 
 import resources.ui.components as Components
@@ -40,52 +41,38 @@ class PromptComponents:
         )
 
     @staticmethod
-    def group_rank_selectors(
+    def group_rank_selector(
         *,
-        roblox_group: "RobloxGroup" = None,
-        placeholder="Choose a group rank",
-        min_values=0,
-        max_values=2,
-        component_id_base="group_rank",
-    ) -> list[TextSelectMenu]:
+        roblox_group: RobloxGroup = None,
+        placeholder: str = "Choose a group rank",
+        min_values: int = 0,
+        max_values: int = 2,
+        component_id: str = "group_rank",
+    ) -> TextSelectMenu:
         """Create a group rank/roleset selection menu for a prompt.
 
-        component_id_base establishes what the component ID will be for the selection menus. The first
-        menu will be the component_id_base, the IDs for any additional menus will be suffixed by the
-        position of it (so `{component_id_base}_N` by default).
-
-        ex: "group_rank" for the first select menu, "group_rank_1" for an additional select menu.
+        Only returns a selector for the first 25 ranks, if a group has over 25 ranks, the user should have
+        an alternative method to choose from the entire range.
         """
         if not roblox_group:
             raise ValueError("A roblox_group is required when using group_rank_selector.")
 
-        final_components = []
+        first_25_rolesets = itertools.islice(roblox_group.rolesets.items(), 0, 25)
 
-        roleset_iterations = (len(roblox_group.rolesets) // 25) + 1
-        group_rolesets = roblox_group.rolesets.items()
-
-        for i in range(roleset_iterations):
-            offset = i * 25
-            roleset_chunk = itertools.islice(group_rolesets, offset, offset + 25)
-
-            final_components.append(
-                TextSelectMenu(
-                    placeholder=placeholder,
-                    min_values=min_values,
-                    max_values=max_values,
-                    component_id=component_id_base if offset == 0 else f"{component_id_base}_{i}",
-                    options=[
-                        TextSelectMenu.Option(
-                            label=str(roleset),
-                            value=str(roleset_id),
-                        )
-                        for roleset_id, roleset in roleset_chunk
-                        if roleset_id != 0
-                    ],
+        return TextSelectMenu(
+            placeholder=placeholder,
+            min_values=min_values,
+            max_values=max_values,
+            component_id=component_id,
+            options=[
+                TextSelectMenu.Option(
+                    label=str(roleset),
+                    value=str(roleset_id),
                 )
-            )
-
-        return final_components
+                for roleset_id, roleset in first_25_rolesets
+                if roleset_id != 0
+            ],
+        )
 
 
 class PromptEmbed(InteractiveMessage):
