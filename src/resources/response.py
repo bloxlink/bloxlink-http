@@ -9,7 +9,6 @@ import hikari
 from pydantic import Field
 from bloxlink_lib import BaseModel, UNDEFINED
 from bloxlink_lib.database import redis
-from pydantic import Field
 
 import resources.ui.components as Components
 import resources.ui.modals as modal
