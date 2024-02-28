@@ -1,6 +1,3 @@
-from os import environ as env
-from typing import Literal
-
 # fmt: off
 MODULES = [
 	"commands",
