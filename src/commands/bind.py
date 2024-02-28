@@ -388,12 +388,13 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
     @Prompt.programmatic_page()
     async def bind_rank_and_role(
-        self, _interaction: hikari.ComponentInteraction, fired_component_id: str | None
+        self, interaction: hikari.ComponentInteraction, fired_component_id: str | None
     ):
         """Prompts a user to choose a rank and a role to give.
         Used for exact-rank bindings, as well as >= and <= bindings."""
 
-        yield await self.response.defer()
+        if fired_component_id != "modal_roleset":
+            yield await self.response.defer()
 
         group_id = self.custom_id.group_id
         roblox_group = await get_group(group_id)
@@ -405,23 +406,39 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             components=[
                 PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1),
                 PromptComponents.discord_role_selector(min_values=1, max_values=1),
+                Button(label="Custom Input", component_id="modal_roleset"),
             ],
         )
 
-        if fired_component_id == "new_role":
-            await self.edit_component(
-                discord_role={
-                    "is_disabled": True,
-                },
-                new_role={"label": "Use existing role", "component_id": "new_role-existing_role"},
+        # if fired_component_id == "new_role":
+        #     await self.edit_component(
+        #         discord_role={
+        #             "is_disabled": True,
+        #         },
+        #         new_role={"label": "Use existing role", "component_id": "new_role-existing_role"},
+        #     )
+        # elif fired_component_id == "new_role-existing_role":
+        #     await self.edit_component(
+        #         discord_role={
+        #             "is_disabled": False,
+        #         },
+        #         new_role={"label": "Create new role", "component_id": "new_role"},
+        #     )
+
+        if fired_component_id == "modal_roleset":
+            modal = PromptComponents.roleset_selection_modal(
+                title="Bind a Group Rank",
+                interaction=interaction,
+                prompt=self,
+                fired_component_id=fired_component_id,
             )
-        elif fired_component_id == "new_role-existing_role":
-            await self.edit_component(
-                discord_role={
-                    "is_disabled": False,
-                },
-                new_role={"label": "Create new role", "component_id": "new_role"},
-            )
+
+            yield await self.response.send_modal(modal)
+
+            if not await modal.submitted():
+                return
+
+            print(await modal.get_data())
 
         current_data = await self.current_data()
 

@@ -16,7 +16,7 @@ from pydantic import Field
 import resources.ui.components as Components
 import resources.ui.modals as modal
 from resources.bloxlink import instance as bloxlink
-from resources.ui.components import RoleSelectMenu, TextSelectMenu
+from resources.ui.components import RoleSelectMenu, TextInput, TextSelectMenu
 from resources.ui.embeds import InteractiveMessage
 
 from .exceptions import CancelCommand, PageNotFound
@@ -71,6 +71,35 @@ class PromptComponents:
                 )
                 for roleset_id, roleset in first_25_rolesets
                 if roleset_id != 0
+            ],
+        )
+
+    @staticmethod
+    def roleset_selection_modal(
+        title: str,
+        *,
+        interaction: hikari.ComponentInteraction | hikari.CommandInteraction,
+        prompt: "Prompt",
+        fired_component_id: str,
+    ) -> "modal.Modal":
+        return modal.build_modal(
+            title=title or "Select a group rank",
+            interaction=interaction,
+            command_name=prompt.command_name,
+            prompt_data={
+                "page_number": prompt.current_page_number,
+                "prompt_name": prompt.__class__.__name__,
+                "component_id": fired_component_id,
+                "prompt_message_id": prompt.custom_id.prompt_message_id,
+            },
+            components=[
+                TextInput(
+                    label="Rank ID Input",
+                    style=TextInput.TextInputStyle.SHORT,
+                    placeholder="Type the ID(s) or range you want to use for this bind...",
+                    custom_id="rank_input",
+                    required=True,
+                )
             ],
         )
 
