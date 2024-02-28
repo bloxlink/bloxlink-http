@@ -1,16 +1,19 @@
+import itertools
 from abc import ABC
 from typing import Literal
 
 import hikari
 from bloxlink_lib import GuildBind, build_binds_desc, get_badge, get_catalog_asset, get_gamepass, get_group
+from bloxlink_lib.models.groups import RobloxGroup
 from hikari.commands import CommandOption, OptionType
 
+import resources.ui.modals as modal
 from resources.binds import create_bind
 from resources.bloxlink import instance as bloxlink
 from resources.commands import CommandContext, GenericCommand
 from resources.exceptions import BindConflictError, RobloxNotFound
-from resources.response import Prompt, PromptComponents, PromptCustomID, PromptPageData
-from resources.ui.components import Button, RoleSelectMenu, TextSelectMenu
+from resources.response import Prompt, PromptCustomID, PromptPageData
+from resources.ui.components import Button, RoleSelectMenu, TextInput, TextSelectMenu
 
 
 class GenericBindPromptCustomID(PromptCustomID, ABC):
@@ -942,3 +945,82 @@ class BindCommand(GenericCommand):
                         "entity_type": cmd_type if cmd_type != "asset" else "catalogAsset",
                     },
                 )
+
+
+class PromptComponents:
+    """Container for generic components that prompts may use."""
+
+    @staticmethod
+    def discord_role_selector(
+        *, placeholder="Choose a Discord role", min_values=0, max_values=25, component_id="discord_role"
+    ) -> RoleSelectMenu:
+        """Create a discord role selection component for a prompt."""
+        return RoleSelectMenu(
+            placeholder=placeholder,
+            min_values=min_values,
+            max_values=max_values,
+            component_id=component_id,
+        )
+
+    @staticmethod
+    def group_rank_selector(
+        *,
+        roblox_group: RobloxGroup = None,
+        placeholder: str = "Choose a group rank",
+        min_values: int = 0,
+        max_values: int = 2,
+        component_id: str = "group_rank",
+    ) -> TextSelectMenu:
+        """Create a group rank/roleset selection menu for a prompt.
+
+        Only returns a selector for the first 25 ranks, if a group has over 25 ranks, the user should have
+        an alternative method to choose from the entire range.
+        """
+        if not roblox_group:
+            raise ValueError("A roblox_group is required when using group_rank_selector.")
+
+        first_25_rolesets = itertools.islice(roblox_group.rolesets.items(), 0, 25)
+
+        return TextSelectMenu(
+            placeholder=placeholder,
+            min_values=min_values,
+            max_values=max_values,
+            component_id=component_id,
+            options=[
+                TextSelectMenu.Option(
+                    label=str(roleset),
+                    value=str(roleset_id),
+                )
+                for roleset_id, roleset in first_25_rolesets
+                if roleset_id != 0
+            ],
+        )
+
+    @staticmethod
+    def roleset_selection_modal(
+        title: str,
+        *,
+        interaction: hikari.ComponentInteraction | hikari.CommandInteraction,
+        prompt: "Prompt",
+        fired_component_id: str,
+    ) -> "modal.Modal":
+        return modal.build_modal(
+            title=title or "Select a group rank",
+            interaction=interaction,
+            command_name=prompt.command_name,
+            prompt_data={
+                "page_number": prompt.current_page_number,
+                "prompt_name": prompt.__class__.__name__,
+                "component_id": fired_component_id,
+                "prompt_message_id": prompt.custom_id.prompt_message_id,
+            },
+            components=[
+                TextInput(
+                    label="Rank ID Input",
+                    style=TextInput.TextInputStyle.SHORT,
+                    placeholder="Type the ID(s) or range you want to use for this bind...",
+                    custom_id="rank_input",
+                    required=True,
+                )
+            ],
+        )
