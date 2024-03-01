@@ -2,7 +2,7 @@ import hikari
 
 from bloxlink_lib import VALID_BIND_TYPES, GuildBind
 from resources.ui.autocomplete import bind_category_autocomplete, bind_id_autocomplete
-from resources.ui.components import component_author_validation, TextSelectMenu, BaseCustomID, parse_custom_id, Component
+from resources.ui.components import component_author_validation, TextSelectMenu, BaseCustomID, Component
 from resources.binds import delete_bind, get_binds, generate_binds_embed
 from resources.bloxlink import instance as bloxlink
 from resources.commands import CommandContext, GenericCommand
@@ -25,7 +25,6 @@ class TextOptionValue(BaseCustomID):
     type: VALID_BIND_TYPES
     id: int | None = None
     index: int
-
 
 
 async def embed_formatter(page_number: int, items: list[GuildBind], _guild_id: str | int, max_pages: int) -> hikari.Embed:
@@ -188,7 +187,7 @@ async def unbind_discard_binding(ctx: CommandContext, custom_id: UnbindCustomID)
     )
 
     for value in selected_values:
-        parsed_value = parse_custom_id(TextOptionValue, value)
+        parsed_value = TextOptionValue.from_str(value)
         bind = paginator.current_items[parsed_value.index]
 
         if bind and bind.type != parsed_value.type:

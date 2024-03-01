@@ -3,14 +3,15 @@ import json
 import logging
 import uuid
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, Callable, Generic, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Generic, Type, TypeVar, Self
 
 import hikari
 from pydantic import Field
-from bloxlink_lib import BaseModel, UNDEFINED
+from bloxlink_lib import BaseModel, UNDEFINED, BloxlinkException
 from bloxlink_lib.database import redis
 
 import resources.ui.components as Components
+import resources.commands as commands
 import resources.ui.modals as modal
 from resources.bloxlink import instance as bloxlink
 from resources.ui.embeds import InteractiveMessage
@@ -401,7 +402,7 @@ class Prompt(Generic[T]):
     @staticmethod
     async def new_prompt(
         prompt_instance: Type["Prompt"],
-        interaction: hikari.ComponentInteraction | hikari.CommandInteraction,
+        interaction: hikari.ComponentInteraction | hikari.CommandInteraction | hikari.ModalInteraction,
         command_name: str,
         response: Response,
         custom_id_data: dict[str, Any] = None,
@@ -435,6 +436,55 @@ class Prompt(Generic[T]):
                 )
 
         return prompt
+
+    @staticmethod
+    async def find_prompt(custom_id: Components.BaseCustomID, interaction: hikari.ComponentInteraction | hikari.ModalInteraction, response: Response=None, command:'commands.Command'=None) -> Self | None:
+        """Returns the matching prompt from the command."""
+
+        if not command:
+            for command_ in filter(lambda c: c.prompts, commands.slash_commands.values()):
+                for command_prompt in command_.prompts:
+                    try:
+                        parsed_custom_id = PromptCustomID.from_str(str(custom_id)) # TODO
+                    except (TypeError, IndexError):
+                        # Keeps prompts from preventing normal components from firing on iteration.
+                        # Since we check for a valid handler
+                        continue
+
+
+                    if (
+                        parsed_custom_id.command_name == command_.name
+                        and parsed_custom_id.prompt_name in (command_prompt.override_prompt_name, command_prompt.__name__)
+                    ):
+                        command = command_
+                        break
+
+                if command:
+                    break
+
+        if not command:
+            raise BloxlinkException("No matching command found.")
+
+        for command_prompt in command.prompts:
+            try:
+                parsed_custom_id = PromptCustomID.from_str(str(custom_id)) # TODO
+            except (TypeError, IndexError):
+                # Keeps prompts from preventing normal components from firing on iteration.
+                # Since we check for a valid handler
+                continue
+
+            if (
+                parsed_custom_id.command_name == command.name
+                and parsed_custom_id.prompt_name in (command_prompt.override_prompt_name, command_prompt.__name__)
+            ):
+                new_prompt = await command_prompt.new_prompt(
+                    prompt_instance=command_prompt,
+                    interaction=interaction,
+                    response=response or Response(interaction),
+                    command_name=command.name,
+                )
+
+                return new_prompt
 
     @staticmethod
     def page(page_details: PromptPageData):
@@ -480,13 +530,12 @@ class Prompt(Generic[T]):
 
         if page.details.components:
             for component in page.details.components:
-                component_custom_id = Components.set_custom_id_field(
-                    self.custom_id_format,
-                    str(self.custom_id),
+                print("setting custom id", self.custom_id_format)
+                component_custom_id = self.custom_id.set_fields(
                     component_custom_id=component.component_id,
                     prompt_message_id=self.custom_id.prompt_message_id,
                 )
-                component.custom_id = component_custom_id
+                component.custom_id = str(component_custom_id)
 
             action_rows = Components.clean_action_rows(
                 functools.reduce(
@@ -569,10 +618,11 @@ class Prompt(Generic[T]):
 
             self.current_page.details = page_details
 
-    async def entry_point(self, interaction: hikari.ComponentInteraction):
+    async def entry_point(self, interaction: hikari.ComponentInteraction | hikari.ModalInteraction):
         """Entry point when a component is called. Redirect to the correct page."""
 
-        self.custom_id = Components.parse_custom_id(self.custom_id_format, interaction.custom_id)
+
+        self.custom_id = self.custom_id_format.from_str(interaction.custom_id)
         self.current_page_number = self.custom_id.page_number
         self.current_page = self.pages[self.current_page_number]
 
@@ -695,7 +745,7 @@ class Prompt(Generic[T]):
     async def save_data_from_interaction(self, interaction: hikari.ComponentInteraction):
         """Save the data from the interaction from the current page to Redis."""
 
-        custom_id = Components.parse_custom_id(PromptCustomID, interaction.custom_id)
+        custom_id = PromptCustomID.from_str(interaction.custom_id)
         component_custom_id = custom_id.component_custom_id
 
         data = await self.current_data(raise_exception=False)
@@ -831,7 +881,7 @@ class Prompt(Generic[T]):
             components=built_page.action_rows,
         )
 
-    async def edit_page(self, components=UNDEFINED, content=None, embed=UNDEFINED, **new_page_data):
+    async def edit_page(self, components: dict=UNDEFINED, content: str=None, embed: hikari.Embed=UNDEFINED, **new_page_data):
         """Edit the current page."""
 
         hash_ = uuid.uuid4().hex
@@ -862,5 +912,5 @@ class Prompt(Generic[T]):
             self.custom_id.prompt_message_id,
             content=content,
             embed=built_page.embed if embed is UNDEFINED else embed,
-            components=built_page.action_rows if components is UNDEFINED else components,
+            components=built_page.action_rows if components is not UNDEFINED else None,
         )

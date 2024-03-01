@@ -12,6 +12,41 @@ from resources import commands
 class BaseCustomID(BaseModel):
     """Base class for interactive custom IDs."""
 
+    @classmethod
+    def from_str(cls: Type[Self], custom_id: str, **kwargs) -> Self:
+        """Converts a custom_id string into a custom_id object."""
+
+        # Split the custom_id into parts
+        parts = custom_id.split(':')
+        attrs_parts: dict[str, str] = {field_tuple[0]: parts[index] for index, field_tuple in enumerate(cls.model_fields_index())}
+
+        for field_name, value in dict(attrs_parts).items():
+            if value == "":
+                del attrs_parts[field_name]
+
+        # Create an instance of the attrs dataclass with the custom_id values
+        custom_id_instance = cls(**attrs_parts, **kwargs)
+
+        # Return the dataclass instance, discarding additional values
+        return custom_id_instance
+
+    def set_fields(self, **kwargs):
+        """Sets the fields in the custom_id object."""
+
+        # Split the existing custom_id into parts
+        parts = str(self).split(':')
+        attrs_parts: dict[str, str] = {field_tuple[0]: parts[index] for index, field_tuple in enumerate(self.model_fields_index())}
+
+        for field_name, value in dict(attrs_parts).items():
+            if value == "":
+                del attrs_parts[field_name]
+
+        # Update specified fields with the provided keyword arguments
+        for field_name, value in kwargs.items():
+            setattr(self, field_name, value)
+
+        return self
+
     def __str__(self):
         field_values: list[str] = []
 
@@ -492,7 +527,7 @@ def component_author_validation(parse_into: CommandCustomID=CommandCustomID, eph
     def func_wrapper(func):
         async def response_wrapper(ctx: commands.CommandContext):
             interaction = ctx.interaction
-            parsed_custom_id = parse_custom_id(parse_into, interaction.custom_id)
+            parsed_custom_id = parse_into.from_str(interaction.custom_id)
 
             command_context = commands.build_context(interaction)
             response = command_context.response
@@ -534,109 +569,3 @@ def component_values_to_dict(interaction: hikari.ComponentInteraction):
                 # "attachments": interaction.resolved.attachments if interaction.resolved else [],
             },
         }
-
-def parse_custom_id[T](T: Type[T], custom_id: str, **kwargs) -> T:
-    """Parses a custom_id into T, discarding additional values in the string.
-
-    Args:
-        T (Type[T]): The attrs dataclass type to parse the custom_id into.
-        custom_id (str): The custom_id to parse.
-
-    Returns:
-        T: The parsed custom_id with additional values discarded.
-    """
-    # Split the custom_id into parts
-    parts = custom_id.split(':')
-    attrs_parts: dict[str, str] = {field_tuple[0]: parts[index] for index, field_tuple in enumerate(T.model_fields_index(T))}
-
-    for field_name, value in dict(attrs_parts).items():
-        if value == "":
-            del attrs_parts[field_name]
-
-    # Create an instance of the attrs dataclass with the custom_id values
-    custom_id_instance = T(**attrs_parts, **kwargs)
-
-    # Return the dataclass instance, discarding additional values
-    return custom_id_instance
-
-# def parse_custom_id(T: Type[T], custom_id: str) -> T:
-#     """Parses a custom_id into T, discarding additional positional arguments.
-
-#     Args:
-#         T (Type[T]): The attrs dataclass type to parse the custom_id into.
-#         custom_id (str): The custom_id to parse.
-
-#     Returns:
-#         T: The parsed custom_id with additional positional arguments discarded.
-#     """
-#     # Split the custom_id into parts
-#     parts = custom_id.split(':')
-
-#     # Ensure the number of parts does not exceed the number of fields in the dataclass
-#     num_fields = len(fields(T))
-#     parts = parts[:num_fields]
-
-#     # Create a dictionary to store the keyword-only arguments
-#     kw_only_args: dict[str, str] = {}
-
-#     # Retrieve the keyword-only argument names
-#     kw_only_field_names = {field.name for field in fields(T) if field.init is False}
-
-#     # Assign values to keyword-only arguments
-#     for name, value in zip(kw_only_field_names, parts[len(parts) - len(kw_only_field_names):]):
-#         kw_only_args[name] = value
-
-#     # Create an instance of the attrs dataclass with the custom_id values
-#     custom_id_instance = T(**kw_only_args, **{field.name: value for field, value in zip(fields(T), parts) if field.init})
-
-#     # Return the dataclass instance
-#     return custom_id_instance
-
-def get_custom_id[T](T: Type[T], **kwargs) -> str:
-    """Constructs a custom_id string from keyword arguments based on the attrs dataclass structure.
-
-    Args:
-        T (Type[T]): The attrs dataclass type for which the custom_id will be constructed.
-        **kwargs: Keyword arguments representing the field values of the dataclass.
-
-    Returns:
-        str: The custom_id string separated by colons.
-    """
-    # Create an instance of the attrs dataclass with the provided keyword arguments
-    custom_id_instance = T(**kwargs)
-
-    return str(custom_id_instance)
-
-def set_custom_id_field[T: BaseModel](T: Type[T], custom_id: str, **kwargs) -> str:
-    """Sets specific fields in a custom_id string and returns the updated custom_id.
-
-    Args:
-        T (Type[T]): The attrs dataclass type.
-        custom_id (str): The existing custom_id string.
-        **kwargs: Keyword arguments representing the fields to be updated.
-
-    Returns:
-        str: The updated custom_id string separated by colons.
-    """
-    # Split the existing custom_id into parts
-    parts = custom_id.split(':')
-    attrs_parts: dict[str, str] = {field_tuple[0]: parts[index] for index, field_tuple in enumerate(T.model_fields_index(T))}
-
-    for field_name, value in dict(attrs_parts).items():
-        if value == "":
-            del attrs_parts[field_name]
-
-    # Create an instance of the attrs dataclass with the default field values
-    custom_id_instance = T(**attrs_parts)
-
-    # Update specified fields with the provided keyword arguments
-    for field_name, value in kwargs.items():
-        setattr(custom_id_instance, field_name, value)
-
-    # Retrieve the updated field values in the order specified by the dataclass
-    field_values = [str(getattr(custom_id_instance, field_name) or "") for field_name in T.model_fields.keys() if field_name != "_custom_id"]
-
-    # Create the updated custom_id string by joining the field values with colons
-    updated_custom_id = ":".join(field_values)
-
-    return updated_custom_id
