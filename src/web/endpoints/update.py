@@ -32,6 +32,13 @@ class UpdateUsersPayload(BaseModel):
     nonce: str
 
 
+class UpdateUserPayload(BaseModel):
+    """The payload for a single user update."""
+
+    guild_id: int
+    member_id: int
+
+
 class MemberJoinPayload(BaseModel):
     """
     The expected content when a request from the gateway -> the server
@@ -55,7 +62,45 @@ class Update(APIController):
     @authenticate()
     async def get_users(self, _request: Request):
         """Endpoint to get a user, just for testing availability currently."""
-        return ok("GET request to this route was valid.")
+        return ok("OK")
+
+    @post("/user")
+    @authenticate()
+    async def post_user(self, content: FromJSON[UpdateUserPayload], _request: Request):
+        """Endpoint to update a single member
+
+        Args:
+            content (FromJSON[UpdateUserPayload]): Request data from the gateway.
+                See UpdateUserPayload for expected JSON variables.
+        """
+
+        content: UpdateUserPayload = content.value
+        member_id = content.member_id
+        guild_id = content.guild_id
+
+        try:
+            member = await bloxlink.rest.fetch_member(guild_id, member_id)
+        except hikari.NotFoundError:
+            return status_code(StatusCodes.NOT_FOUND, {
+                "error": "Member not found."
+            })
+
+        try:
+            roblox_account = await get_user_account(member_id, guild_id=guild_id, raise_errors=False)
+            await binds.apply_binds(member, guild_id, roblox_account, moderate_user=True)
+        except BloxlinkForbidden:
+            return status_code(StatusCodes.FORBIDDEN, {
+                "error": "Bloxlink does not have permission to update this user."
+            })
+        except RobloxDown:
+            return status_code(StatusCodes.SERVICE_UNAVAILABLE, {
+                "error": "Roblox is down. Please try again later."
+            })
+
+        return ok({
+            "success": True
+        })
+
 
     @post("/users")
     @authenticate()
