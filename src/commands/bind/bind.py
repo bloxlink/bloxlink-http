@@ -402,15 +402,20 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         group_id = self.custom_id.group_id
         roblox_group = await get_group(group_id)
 
+        components = [
+            PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1),
+            PromptComponents.discord_role_selector(min_values=1, max_values=1),
+        ]
+
+        # Only allow modal input if there's over 25 ranks.
+        if len(roblox_group.rolesets) > 25:
+            components.append(Button(label="Custom Input", component_id="modal_roleset"))
+
         yield PromptPageData(
             title="Bind Group Rank",
             description="Please select one group rank and a corresponding Discord role to give. "
             "No existing Discord role? No problem, just click `Create new role`.",
-            components=[
-                PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1),
-                PromptComponents.discord_role_selector(min_values=1, max_values=1),
-                Button(label="Custom Input", component_id="modal_roleset"),
-            ],
+            components=components,
         )
 
         # if fired_component_id == "new_role":
@@ -441,7 +446,19 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             if not await local_modal.submitted():
                 return
 
-            print(await local_modal.get_data())
+            modal_data = await local_modal.get_data()
+            user_input: str = modal_data["rank_input"]
+            if not user_input.isdigit():
+                yield await self.response.send_first(
+                    "This custom input only accepts a single number! Try again, or choose a rank from the selection menu above.",
+                    ephemeral=True,
+                )
+                return
+
+            await self.save_stateful_data(group_rank={"values": [int(user_input)]})
+            yield await self.response.send_first(
+                f"The rank ID of {user_input} has been stored for this bind."
+            )
 
         current_data = await self.current_data()
 
@@ -1004,6 +1021,7 @@ class PromptComponents:
         prompt: "Prompt",
         fired_component_id: str,
     ) -> "modal.Modal":
+        """Send a modal to the user asking for some rank ID input."""
         return await modal.build_modal(
             title=title or "Select a group rank",
             interaction=interaction,
