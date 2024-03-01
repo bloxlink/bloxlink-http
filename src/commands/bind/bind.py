@@ -6,6 +6,7 @@ import hikari
 from bloxlink_lib import GuildBind, build_binds_desc, get_badge, get_catalog_asset, get_gamepass, get_group
 from bloxlink_lib.models.groups import RobloxGroup
 from hikari.commands import CommandOption, OptionType
+from thefuzz import process
 
 import resources.ui.modals as modal
 from resources.binds import create_bind
@@ -403,18 +404,27 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         roblox_group = await get_group(group_id)
 
         components = [
-            PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1),
             PromptComponents.discord_role_selector(min_values=1, max_values=1),
         ]
 
+        description = ""
         # Only allow modal input if there's over 25 ranks.
         if len(roblox_group.rolesets) > 25:
-            components.append(Button(label="Custom Input", component_id="modal_roleset"))
+            components.append(Button(label="Input a Group rank", component_id="modal_roleset"))
+            description = (
+                "Please use the button to select your group rank, and the selection menu to choose the Discord"
+                "role to give. No existing Discord role? No problem, click `Create new role`!"
+            )
+        else:
+            components.append(PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1))
+            description = (
+                "Please select one group rank and a corresponding Discord role to give. "
+                "No existing Discord role? No problem, just click `Create new role`."
+            )
 
         yield PromptPageData(
             title="Bind Group Rank",
-            description="Please select one group rank and a corresponding Discord role to give. "
-            "No existing Discord role? No problem, just click `Create new role`.",
+            description=description,
             components=components,
         )
 
@@ -448,16 +458,28 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
             modal_data = await local_modal.get_data()
             user_input: str = modal_data["rank_input"]
-            if not user_input.isdigit():
-                yield await self.response.send_first(
-                    "This custom input only accepts a single number! Try again, or choose a rank from the selection menu above.",
-                    ephemeral=True,
-                )
-                return
 
-            await self.save_stateful_data(group_rank={"values": [int(user_input)]})
+            # TODO: Extract this logic out to a method so we can reuse it elsewhere?
+            if not user_input.isdigit():
+                # Fuzzy string match the user input to the roleset name.
+                roleset_mapping = {key: roleset.name for key, roleset in roblox_group.rolesets.items()}
+                _roleset_name, _, roleset_id = process.extractOne(query=user_input, choices=roleset_mapping)
+
+                user_input = roleset_id
+            else:
+                if int(user_input) not in roblox_group.rolesets.keys():
+                    yield await self.response.send_first(
+                        "That ID does not match a group rank in your roblox group! Try again.", ephemeral=True
+                    )
+                    return
+
+                # valid input, continue.
+
+            # user_input at this point will be the matching rank ID.
+            # mapping user input to what the stateful group_rank field expects so we do not have to add extra code.
+            await self.save_stateful_data(group_rank={"values": [user_input]})
             yield await self.response.send_first(
-                f"The rank ID of {user_input} has been stored for this bind.", ephemeral=True
+                f"The rank ID `{user_input}` has been stored for this bind.", ephemeral=True
             )
 
         current_data = await self.current_data()
@@ -1037,7 +1059,7 @@ class PromptComponents:
                 TextInput(
                     label="Rank ID Input",
                     style=TextInput.TextInputStyle.SHORT,
-                    placeholder="Type the ID(s) or range you want to use for this bind...",
+                    placeholder="Type the name or ID of the rank for this bind.",
                     custom_id="rank_input",
                     required=True,
                 )
