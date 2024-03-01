@@ -85,6 +85,11 @@ class Update(APIController):
                 "error": "Member not found."
             })
 
+        if member.is_bot:
+            return status_code(StatusCodes.FORBIDDEN, {
+                "error": "Bots cannot be updated."
+            })
+
         try:
             roblox_account = await get_user_account(member_id, guild_id=guild_id, raise_errors=False)
             await binds.apply_binds(member, guild_id, roblox_account, moderate_user=True)
