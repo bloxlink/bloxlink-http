@@ -997,18 +997,19 @@ class PromptComponents:
         )
 
     @staticmethod
-    def roleset_selection_modal(
+    async def roleset_selection_modal(
         title: str,
         *,
         interaction: hikari.ComponentInteraction | hikari.CommandInteraction,
         prompt: "Prompt",
         fired_component_id: str,
     ) -> "modal.Modal":
-        return modal.build_modal(
+        return await modal.build_modal(
             title=title or "Select a group rank",
             interaction=interaction,
             command_name=prompt.command_name,
             prompt_data={
+                "original_custom_id": prompt.custom_id,
                 "page_number": prompt.current_page_number,
                 "prompt_name": prompt.__class__.__name__,
                 "component_id": fired_component_id,
