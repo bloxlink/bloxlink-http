@@ -403,20 +403,21 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         group_id = self.custom_id.group_id
         roblox_group = await get_group(group_id)
 
-        components = [
-            PromptComponents.discord_role_selector(min_values=1, max_values=1),
-        ]
-
         description = ""
+        components = [PromptComponents.discord_role_selector(min_values=1, max_values=1)]
+
         # Only allow modal input if there's over 25 ranks.
         if len(roblox_group.rolesets) > 25:
             components.append(Button(label="Input a Group rank", component_id="modal_roleset"))
+
             description = (
                 "Please use the button to select your group rank, and the selection menu to choose the Discord"
                 "role to give. No existing Discord role? No problem, click `Create new role`!"
             )
+            
         else:
             components.append(PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1))
+
             description = (
                 "Please select one group rank and a corresponding Discord role to give. "
                 "No existing Discord role? No problem, just click `Create new role`."
@@ -466,6 +467,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 _roleset_name, _, roleset_id = process.extractOne(query=user_input, choices=roleset_mapping)
 
                 user_input = roleset_id
+
             else:
                 if int(user_input) not in roblox_group.rolesets.keys():
                     yield await self.response.send_first(
@@ -475,8 +477,6 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
                 # valid input, continue.
 
-            # user_input at this point will be the matching rank ID.
-            # mapping user input to what the stateful group_rank field expects so we do not have to add extra code.
             await self.save_stateful_data(group_rank={"values": [user_input]})
             yield await self.response.send_first(
                 f"The rank ID `{user_input}` has been stored for this bind.", ephemeral=True
@@ -553,9 +553,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
         if fired_component_id == "new_role":
             await self.edit_component(
-                discord_role={
-                    "is_disabled": True,
-                },
+                discord_role={"is_disabled": True},
                 new_role={"label": "Use existing role", "component_id": "new_role-existing_role"},
             )
         elif fired_component_id == "new_role-existing_role":
