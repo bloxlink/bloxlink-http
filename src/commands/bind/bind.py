@@ -1008,13 +1008,13 @@ class PromptComponents:
             title=title or "Select a group rank",
             interaction=interaction,
             command_name=prompt.command_name,
-            prompt_data={
-                "original_custom_id": prompt.custom_id,
-                "page_number": prompt.current_page_number,
-                "prompt_name": prompt.__class__.__name__,
-                "component_id": fired_component_id,
-                "prompt_message_id": prompt.custom_id.prompt_message_id,
-            },
+            prompt_data=modal.ModalPromptArgs(
+                prompt_name=prompt.__class__.__name__,
+                original_custom_id=prompt.custom_id,
+                page_number=prompt.current_page_number,
+                prompt_message_id=prompt.custom_id.prompt_message_id,
+                component_id=fired_component_id,
+            ),
             components=[
                 TextInput(
                     label="Rank ID Input",
