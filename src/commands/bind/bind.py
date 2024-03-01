@@ -457,7 +457,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
             await self.save_stateful_data(group_rank={"values": [int(user_input)]})
             yield await self.response.send_first(
-                f"The rank ID of {user_input} has been stored for this bind."
+                f"The rank ID of {user_input} has been stored for this bind.", ephemeral=True
             )
 
         current_data = await self.current_data()
