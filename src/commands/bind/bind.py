@@ -429,19 +429,19 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         #     )
 
         if fired_component_id == "modal_roleset":
-            modal = PromptComponents.roleset_selection_modal(
+            local_modal = await PromptComponents.roleset_selection_modal(
                 title="Bind a Group Rank",
                 interaction=interaction,
                 prompt=self,
                 fired_component_id=fired_component_id,
             )
 
-            yield await self.response.send_modal(modal)
+            yield await self.response.send_modal(local_modal)
 
-            if not await modal.submitted():
+            if not await local_modal.submitted():
                 return
 
-            print(await modal.get_data())
+            print(await local_modal.get_data())
 
         current_data = await self.current_data()
 
