@@ -271,12 +271,14 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                         **bind_criteria,
                     )
 
+                # Hack so we can change field names with edit_page.
+                current_embed = interaction.message.embeds[0]
+                current_embed.title = "New group binds saved."
+                current_embed.description = "The binds on this menu were saved to your server. You can edit your binds at any time by running `/bind` again."
+                current_embed.edit_field(1, "Created Binds")
+
                 # FIXME: Overriding the prompt in place instead of editing.
-                yield await self.edit_page(
-                    title="New group binds saved.",
-                    description="The binds on this menu were saved to your server. "
-                    "You can edit your binds at any time by running `/bind` again.",
-                )
+                yield await self.edit_page(embed=current_embed)
                 yield await self.response.send(
                     "Your new binds have been saved to your server.", ephemeral=True
                 )
