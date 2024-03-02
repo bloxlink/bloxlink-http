@@ -414,7 +414,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 "Please use the button to select your group rank, and the selection menu to choose the Discord"
                 "role to give. No existing Discord role? No problem, click `Create new role`!"
             )
-            
+
         else:
             components.append(PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1))
 
@@ -471,7 +471,8 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             else:
                 if int(user_input) not in roblox_group.rolesets.keys():
                     yield await self.response.send_first(
-                        "That ID does not match a group rank in your roblox group! Try again.", ephemeral=True
+                        "That ID does not match a group rank in your roblox group! Please try again.",
+                        ephemeral=True,
                     )
                     return
 
@@ -525,43 +526,83 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
     @Prompt.programmatic_page()
     async def bind_rank_and_above(
-        self, _interaction: hikari.ComponentInteraction, fired_component_id: str | None
+        self, interaction: hikari.ComponentInteraction, fired_component_id: str | None
     ):
         """
         Prompts a user to choose a rank and a role to give.
-        Used for <= bindings.
+        Used for >= bindings.
         """
 
-        yield await self.response.defer()
+        if fired_component_id != "modal_roleset":
+            yield await self.response.defer()
 
         group_id = self.custom_id.group_id
         roblox_group = await get_group(group_id)
 
+        components = [PromptComponents.discord_role_selector(min_values=1, max_values=1)]
+
+        # Only allow modal input if there's over 25 ranks.
+        if len(roblox_group.rolesets) > 25:
+            components.append(Button(label="Input a Group rank", component_id="modal_roleset"))
+        else:
+            components.append(PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1))
+
         yield PromptPageData(
             title="Bind Group Rank And Above",
             description="Please choose the **lowest rank** for this bind. Everyone with this rank **and above** will be given this role.",
-            components=[
-                PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1),
-                PromptComponents.discord_role_selector(min_values=1, max_values=1)
-                # Button(
-                #     label="Create new role",
-                #     component_id="new_role",
-                #     is_disabled=False,
-                # ),
-            ],
+            components=components,
         )
 
-        if fired_component_id == "new_role":
-            await self.edit_component(
-                discord_role={"is_disabled": True},
-                new_role={"label": "Use existing role", "component_id": "new_role-existing_role"},
+        # if fired_component_id == "new_role":
+        #     await self.edit_component(
+        #         discord_role={"is_disabled": True},
+        #         new_role={"label": "Use existing role", "component_id": "new_role-existing_role"},
+        #     )
+        # elif fired_component_id == "new_role-existing_role":
+        #     await self.edit_component(
+        #         discord_role={
+        #             "is_disabled": False,
+        #         },
+        #         new_role={"label": "Create new role", "component_id": "new_role"},
+        #     )
+
+        if fired_component_id == "modal_roleset":
+            local_modal = await PromptComponents.roleset_selection_modal(
+                title="Select a minimum group rank to give.",
+                interaction=interaction,
+                prompt=self,
+                fired_component_id=fired_component_id,
             )
-        elif fired_component_id == "new_role-existing_role":
-            await self.edit_component(
-                discord_role={
-                    "is_disabled": False,
-                },
-                new_role={"label": "Create new role", "component_id": "new_role"},
+
+            yield await self.response.send_modal(local_modal)
+
+            if not await local_modal.submitted():
+                return
+
+            modal_data = await local_modal.get_data()
+            user_input: str = modal_data["rank_input"]
+
+            # TODO: Extract this logic out to a method so we can reuse it elsewhere?
+            if not user_input.isdigit():
+                # Fuzzy string match the user input to the roleset name.
+                roleset_mapping = {key: roleset.name for key, roleset in roblox_group.rolesets.items()}
+                _roleset_name, _, roleset_id = process.extractOne(query=user_input, choices=roleset_mapping)
+
+                user_input = roleset_id
+
+            else:
+                if int(user_input) not in roblox_group.rolesets.keys():
+                    yield await self.response.send_first(
+                        "That ID does not match a group rank in your roblox group! Please try again.",
+                        ephemeral=True,
+                    )
+                    return
+
+                # valid input, continue.
+
+            await self.save_stateful_data(group_rank={"values": [user_input]})
+            yield await self.response.send_first(
+                f"The rank ID `{user_input}` has been stored for this bind.", ephemeral=True
             )
 
         current_data = await self.current_data()
