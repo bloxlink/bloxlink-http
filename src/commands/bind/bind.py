@@ -387,7 +387,9 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 yield await self.go_to(self.bind_rank_and_role)
             case "gte":
                 yield await self.go_to(self.bind_rank_and_above)
-            case "range" | "lte":
+            case "lte":
+                yield await self.go_to(self.bind_rank_and_below)
+            case "range":
                 yield await self.go_to(self.bind_range)
             case "in_group" | "not_in_group":
                 yield await self.go_to(self.bind_role)
@@ -569,7 +571,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
         if fired_component_id == "modal_roleset":
             local_modal = await PromptComponents.roleset_selection_modal(
-                title="Select a minimum group rank to give.",
+                title="Select a minimum group rank.",
                 interaction=interaction,
                 prompt=self,
                 fired_component_id=fired_component_id,
@@ -625,6 +627,129 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                         "group": {
                             "roleset": int(group_rank) * -1,  # negative rank means "current rank and above"
                         },
+                    },
+                )
+            )
+
+            await self.save_stateful_data(
+                pending_binds=[
+                    b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds
+                ]
+            )
+            await self.response.send(
+                "Bind added to your in-progress workflow. Click `Publish` to save your changes.",
+                ephemeral=True,
+            )
+            yield await self.go_to(self.current_binds)
+
+        if fired_component_id in ("group_rank", "discord_role"):
+            await self.ack()
+
+    @Prompt.programmatic_page()
+    async def bind_rank_and_below(
+        self, interaction: hikari.ComponentInteraction, fired_component_id: str | None
+    ):
+        """Prompts a user to choose a rank and a role to give."""
+
+        if fired_component_id != "modal_roleset":
+            yield await self.response.defer()
+
+        group_id = self.custom_id.group_id
+        roblox_group = await get_group(group_id)
+
+        components = [PromptComponents.discord_role_selector(min_values=1, max_values=1)]
+
+        # Only allow modal input if there's over 25 ranks.
+        if len(roblox_group.rolesets) > 25:
+            components.append(Button(label="Input a Group rank", component_id="modal_roleset"))
+        else:
+            components.append(PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1))
+
+        yield PromptPageData(
+            title="Bind Group Rank And Below",
+            description=(
+                "Please choose the **highest** group rank to give for this bind along with a corresponding Discord role to give. "
+                "Everyone with this group rank **and below** will receive that role."
+                "No existing Discord role? No problem, just click `Create new role`."
+            ),
+            components=components,
+        )
+
+        # if fired_component_id == "new_role":
+        #     await self.edit_component(
+        #         discord_role={
+        #             "is_disabled": True,
+        #         },
+        #         new_role={"label": "Use existing role", "component_id": "new_role-existing_role"},
+        #     )
+        # elif fired_component_id == "new_role-existing_role":
+        #     await self.edit_component(
+        #         discord_role={
+        #             "is_disabled": False,
+        #         },
+        #         new_role={"label": "Create new role", "component_id": "new_role"},
+        #     )
+
+        if fired_component_id == "modal_roleset":
+            local_modal = await PromptComponents.roleset_selection_modal(
+                title="Select a maximum group rank.",
+                interaction=interaction,
+                prompt=self,
+                fired_component_id=fired_component_id,
+            )
+
+            yield await self.response.send_modal(local_modal)
+
+            if not await local_modal.submitted():
+                return
+
+            modal_data = await local_modal.get_data()
+            user_input: str = modal_data["rank_input"]
+
+            # TODO: Extract this logic out to a method so we can reuse it elsewhere?
+            if not user_input.isdigit():
+                # Fuzzy string match the user input to the roleset name.
+                roleset_mapping = {key: roleset.name for key, roleset in roblox_group.rolesets.items()}
+                _roleset_name, _, roleset_id = process.extractOne(query=user_input, choices=roleset_mapping)
+
+                user_input = roleset_id
+
+            else:
+                if int(user_input) not in roblox_group.rolesets.keys():
+                    yield await self.response.send_first(
+                        "That ID does not match a group rank in your roblox group! Please try again.",
+                        ephemeral=True,
+                    )
+                    return
+
+                # valid input, continue.
+
+            await self.save_stateful_data(group_rank={"values": [user_input]})
+            yield await self.response.send_first(
+                f"The rank ID `{user_input}` has been stored for this bind.", ephemeral=True
+            )
+
+        current_data = await self.current_data()
+
+        discord_role = current_data["discord_role"]["values"][0] if current_data.get("discord_role") else None
+        group_rank = (
+            current_data["group_rank"]["values"][0]
+            if current_data.get("group_rank") and current_data["group_rank"]["values"]
+            else None
+        )
+
+        if discord_role and group_rank:
+            existing_pending_binds: list[GuildBind] = [
+                GuildBind(**b) for b in current_data.get("pending_binds", [])
+            ]
+            existing_pending_binds.append(
+                GuildBind(
+                    roles=[discord_role],
+                    remove_roles=[],
+                    criteria={
+                        "type": "group",
+                        "id": group_id,
+                        "group": {"min": 1, "max": int(group_rank)},
                     },
                 )
             )
