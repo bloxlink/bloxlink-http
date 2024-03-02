@@ -396,8 +396,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
     async def bind_rank_and_role(
         self, interaction: hikari.ComponentInteraction, fired_component_id: str | None
     ):
-        """Prompts a user to choose a rank and a role to give.
-        Used for exact-rank bindings, as well as >= and <= bindings."""
+        """Prompts a user to choose a rank and a role to give."""
 
         if fired_component_id != "modal_roleset":
             yield await self.response.defer()
