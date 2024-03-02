@@ -3,15 +3,15 @@ import json
 import logging
 import uuid
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, Callable, Generic, Type, TypeVar, Self
+from typing import TYPE_CHECKING, Any, Callable, Generic, Self, Type, TypeVar
 
 import hikari
-from pydantic import Field
-from bloxlink_lib import BaseModel, UNDEFINED, BloxlinkException
+from bloxlink_lib import UNDEFINED, BaseModel, BloxlinkException
 from bloxlink_lib.database import redis
+from pydantic import Field
 
-import resources.ui.components as Components
 import resources.commands as commands
+import resources.ui.components as Components
 import resources.ui.modals as modal
 from resources.bloxlink import instance as bloxlink
 from resources.ui.embeds import InteractiveMessage
@@ -895,7 +895,7 @@ class Prompt(Generic[T]):
         for attr_name, attr_value in new_page_data.items():
             self._pending_embed_changes[attr_name] = attr_value
 
-        if components:
+        if components is not UNDEFINED and components:
             for component_custom_id, kwargs in components.items():
                 for component in self.current_page.details.components:
                     if component.component_id == component_custom_id:
