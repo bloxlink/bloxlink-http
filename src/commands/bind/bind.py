@@ -406,29 +406,20 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         group_id = self.custom_id.group_id
         roblox_group = await get_group(group_id)
 
-        description = ""
         components = [PromptComponents.discord_role_selector(min_values=1, max_values=1)]
 
         # Only allow modal input if there's over 25 ranks.
         if len(roblox_group.rolesets) > 25:
             components.append(Button(label="Input a Group rank", component_id="modal_roleset"))
-
-            description = (
-                "Please use the button to select your group rank, and the selection menu to choose the Discord"
-                "role to give. No existing Discord role? No problem, click `Create new role`!"
-            )
-
         else:
             components.append(PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1))
 
-            description = (
-                "Please select one group rank and a corresponding Discord role to give. "
-                "No existing Discord role? No problem, just click `Create new role`."
-            )
-
         yield PromptPageData(
             title="Bind Group Rank",
-            description=description,
+            description=(
+                "Please select one group rank and a corresponding Discord role to give. "
+                "No existing Discord role? No problem, just click `Create new role`."
+            ),
             components=components,
         )
 
