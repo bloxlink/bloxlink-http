@@ -435,7 +435,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
         # Only allow modal input if there's over 25 ranks.
         if len(roblox_group.rolesets) > 25:
-            components.append(Button(label="Input a Group rank", component_id="modal_roleset"))
+            components.append(Button(label="Select a group rank", component_id="modal_roleset"))
         else:
             components.append(PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1))
 
@@ -530,46 +530,89 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             await self.ack()
 
     @Prompt.programmatic_page()
-    async def bind_range(self, _interaction: hikari.ComponentInteraction, fired_component_id: str | None):
+    async def bind_range(self, interaction: hikari.ComponentInteraction, fired_component_id: str | None):
         """Prompts a user to select two group ranks and a Discord role to give."""
-        yield await self.response.defer()
+
+        if fired_component_id != "modal_roleset":
+            yield await self.response.defer()
 
         group_id = self.custom_id.group_id
         roblox_group = await get_group(group_id)
 
+        components = [PromptComponents.discord_role_selector(min_values=1, max_values=1)]
+
+        # Only allow modal input if there's over 25 ranks.
+        if len(roblox_group.rolesets) > 25:
+            components.append(Button(label="Select group ranks", component_id="modal_roleset"))
+        else:
+            components.append(PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=2))
+
         yield PromptPageData(
-            title="Bind Group Rank",
+            title="Bind Group Range",
             description="Please select two group ranks and a corresponding Discord role to give. "
             "No existing Discord role? No problem, just click `Create new role`.",
-            components=[
-                PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=2),
-                PromptComponents.discord_role_selector(min_values=1, max_values=1),
-                # Button(
-                #     label="Create new role",
-                #     component_id="new_role",
-                #     is_disabled=False,
-                # ),
-            ],
+            components=components,
         )
 
-        if fired_component_id == "new_role":
-            await self.edit_component(
-                discord_role={
-                    "is_disabled": True,
-                },
-                new_role={"label": "Use existing role", "component_id": "new_role-existing_role"},
-            )
-        elif fired_component_id == "new_role-existing_role":
-            await self.edit_component(
-                discord_role={
-                    "is_disabled": False,
-                },
-                new_role={"label": "Create new role", "component_id": "new_role"},
-            )
+        # if fired_component_id == "new_role":
+        #     await self.edit_component(
+        #         discord_role={
+        #             "is_disabled": True,
+        #         },
+        #         new_role={"label": "Use existing role", "component_id": "new_role-existing_role"},
+        #     )
+        # elif fired_component_id == "new_role-existing_role":
+        #     await self.edit_component(
+        #         discord_role={
+        #             "is_disabled": False,
+        #         },
+        #         new_role={"label": "Create new role", "component_id": "new_role"},
+        #     )
 
         current_data = await self.current_data()
-
         discord_roles = current_data["discord_role"]["values"] if current_data.get("discord_role") else None
+
+        if fired_component_id == "modal_roleset":
+            local_modal = await PromptComponents.multi_roleset_selection_modal(
+                title="Input group rank range",
+                interaction=interaction,
+                prompt=self,
+                fired_component_id=fired_component_id,
+            )
+
+            yield await self.response.send_modal(local_modal)
+
+            if not await local_modal.submitted():
+                return
+
+            modal_data = await local_modal.get_data()
+            min_rank_id = parse_modal_rank_input(modal_data["min_rank_input"], roblox_group)
+            max_rank_id = parse_modal_rank_input(modal_data["max_rank_input"], roblox_group)
+
+            if min_rank_id == -1 or max_rank_id == -1:
+                yield await self.response.send_first(
+                    "One of the given IDs does not match a group rank in your roblox group! Please try again.",
+                    ephemeral=True,
+                )
+                return
+
+            if min_rank_id == max_rank_id:
+                yield await self.response.send_first(
+                    "Those two group ranks are the same! Please make sure you are inputting two different group ranks.",
+                    ephemeral=True,
+                )
+                return
+
+            await self.save_stateful_data(group_rank={"values": [min_rank_id, max_rank_id]})
+            # Force the saved rank_id into the memory instance of current_data.
+            current_data["group_rank"] = {"values": [min_rank_id, max_rank_id]}
+
+            if not discord_roles:
+                await self.response.send(
+                    f"The rank IDs `{min_rank_id}` and `{max_rank_id}` have been stored for this bind.",
+                    ephemeral=True,
+                )
+
         group_ranks = (
             [int(x) for x in current_data["group_rank"]["values"]] if current_data.get("group_rank") else None
         )
@@ -578,6 +621,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             existing_pending_binds: list[GuildBind] = [
                 GuildBind(**b) for b in current_data.get("pending_binds", [])
             ]
+
             existing_pending_binds.append(
                 GuildBind(
                     roles=discord_roles,
@@ -589,16 +633,20 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                     },
                 )
             )
+
             await self.save_stateful_data(
                 pending_binds=[
                     b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds
                 ]
             )
+
+            # Start heading to main prompt before telling the user the bind was added.
+            yield await self.go_to(self.current_binds)
+
             await self.response.send(
                 "Bind added to your in-progress workflow. Click `Publish` to save your changes.",
                 ephemeral=True,
             )
-            yield await self.go_to(self.current_binds)
 
         if fired_component_id in ("group_rank", "discord_role"):
             await self.ack()
@@ -989,6 +1037,44 @@ class PromptComponents:
                     custom_id="rank_input",
                     required=True,
                 )
+            ],
+        )
+
+    @staticmethod
+    async def multi_roleset_selection_modal(
+        title: str,
+        *,
+        interaction: hikari.ComponentInteraction | hikari.CommandInteraction,
+        prompt: "Prompt",
+        fired_component_id: str,
+    ) -> "modal.Modal":
+        """Send a modal to the user asking for some rank ID input."""
+        return await modal.build_modal(
+            title=title or "Select a group rank",
+            interaction=interaction,
+            command_name=prompt.command_name,
+            prompt_data=modal.ModalPromptArgs(
+                prompt_name=prompt.__class__.__name__,
+                original_custom_id=prompt.custom_id,
+                page_number=prompt.current_page_number,
+                prompt_message_id=prompt.custom_id.prompt_message_id,
+                component_id=fired_component_id,
+            ),
+            components=[
+                TextInput(
+                    label="Minimum Rank Input",
+                    style=TextInput.TextInputStyle.SHORT,
+                    placeholder="Type the name or ID of the rank for this bind.",
+                    custom_id="min_rank_input",
+                    required=True,
+                ),
+                TextInput(
+                    label="Maximum Rank Input",
+                    style=TextInput.TextInputStyle.SHORT,
+                    placeholder="Type the name or ID of the rank for this bind.",
+                    custom_id="max_rank_input",
+                    required=True,
+                ),
             ],
         )
 
