@@ -138,7 +138,7 @@ class SetupPrompt(Prompt):
                 select_nickname = (await self.current_data(key_name="preset_nickname_select")).get("values")[0]
 
                 if select_nickname == "custom":
-                    modal = build_modal(
+                    modal = await build_modal(
                         title="Add a Custom Nickname",
                         command_name=self.command_name,
                         interaction=interaction,
@@ -146,7 +146,8 @@ class SetupPrompt(Prompt):
                             "page_number": self.current_page_number,
                             "prompt_name": self.__class__.__name__,
                             "component_id": fired_component_id,
-                            "prompt_message_id": self.custom_id.prompt_message_id
+                            "prompt_message_id": self.custom_id.prompt_message_id,
+                            "original_custom_id": self.custom_id,
                         },
                         components=[
                             TextInput(
@@ -191,7 +192,7 @@ class SetupPrompt(Prompt):
                         "prompt_name": self.__class__.__name__,
                         "component_id": fired_component_id,
                         "prompt_message_id": self.custom_id.prompt_message_id,
-                        "original_custom_id": self.custom_id
+                        "original_custom_id": self.custom_id,
                     },
                     components=[
                         TextInput(
@@ -274,7 +275,7 @@ class SetupPrompt(Prompt):
 
         match fired_component_id:
             case "verified_role_change_name":
-                modal = build_modal(
+                modal = await build_modal(
                     title="Change Verified Role Name",
                     command_name=self.command_name,
                     interaction=interaction,
@@ -282,7 +283,8 @@ class SetupPrompt(Prompt):
                         "page_number": self.current_page_number,
                         "prompt_name": self.__class__.__name__,
                         "component_id": fired_component_id,
-                        "prompt_message_id": self.custom_id.prompt_message_id
+                        "prompt_message_id": self.custom_id.prompt_message_id,
+                        "original_custom_id": self.custom_id,
                     },
                     components=[
                         TextInput(
@@ -361,7 +363,7 @@ class SetupPrompt(Prompt):
 
         match fired_component_id:
             case "group_link":
-                modal = build_modal(
+                modal = await build_modal(
                     title="Link a Group",
                     command_name=self.command_name,
                     interaction=interaction,
@@ -369,7 +371,8 @@ class SetupPrompt(Prompt):
                         "page_number": self.current_page_number,
                         "prompt_name": self.__class__.__name__,
                         "component_id": fired_component_id,
-                        "prompt_message_id": self.custom_id.prompt_message_id
+                        "prompt_message_id": self.custom_id.prompt_message_id,
+                        "original_custom_id": self.custom_id,
                     },
                     components=[
                         TextInput(
