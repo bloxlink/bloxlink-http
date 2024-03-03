@@ -621,7 +621,6 @@ class Prompt(Generic[T]):
     async def entry_point(self, interaction: hikari.ComponentInteraction | hikari.ModalInteraction):
         """Entry point when a component is called. Redirect to the correct page."""
 
-
         self.custom_id = self.custom_id_format.from_str(interaction.custom_id)
         self.current_page_number = self.custom_id.page_number
         self.current_page = self.pages[self.current_page_number]
@@ -638,7 +637,7 @@ class Prompt(Generic[T]):
         async for generator_response in self.run_page(hash_=hash_):
             if isinstance(generator_response, hikari.Message):
                 continue
-            logging.debug(hash_, "generator_response entry_point()", generator_response)
+            logging.debug("%s generator_response entry_point() %s", hash_, generator_response)
             yield generator_response
 
     async def run_page(
@@ -651,7 +650,10 @@ class Prompt(Generic[T]):
         self.current_page = self.pages[self.current_page_number]
 
         logging.debug(
-            hash_, "run_page() current page=", self.current_page_number, self.current_page.details.title
+            "%s run_page() current page=%s %s",
+            hash_,
+            self.current_page_number,
+            self.current_page.details.title,
         )
 
         generator_or_coroutine = self.current_page.func(
@@ -691,8 +693,8 @@ class Prompt(Generic[T]):
                 return
 
         logging.debug(
+            "%s building page run_page(), current page=%s %s",
             hash_,
-            "building page run_page(), current page=",
             self.current_page_number,
             self.current_page.details.title,
         )
@@ -702,7 +704,7 @@ class Prompt(Generic[T]):
 
             built_page = await self.build_page(self.current_page, custom_id_data, hash_)
 
-            logging.debug(hash_, "run_page() built page", built_page.embed.title)
+            logging.debug("%s run_page() built page %s", hash_, built_page.embed.title)
 
             if built_page.page_number != self.current_page_number:
                 return
