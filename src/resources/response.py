@@ -150,6 +150,8 @@ class Response:
             )
 
         if self.responded:
+            self.deferred = False
+
             if edit_original:
                 logging.debug("send_first() editing original interaction response, i=%s", self.interaction)
                 return await self.interaction.edit_initial_response(
