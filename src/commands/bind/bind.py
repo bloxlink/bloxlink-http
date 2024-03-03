@@ -438,6 +438,9 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         #         new_role={"label": "Create new role", "component_id": "new_role"},
         #     )
 
+        current_data = await self.current_data()
+        discord_role = current_data["discord_role"]["values"][0] if current_data.get("discord_role") else None
+
         if fired_component_id == "modal_roleset":
             local_modal = await PromptComponents.roleset_selection_modal(
                 title="Bind a Group Rank",
@@ -460,21 +463,17 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                     ephemeral=True,
                 )
                 return
-
+            
+            
             await self.save_stateful_data(group_rank={"values": [rank_id]})
+            # Force the saved rank_id into the memory instance of current_data.
+            current_data["group_rank"] = {"values": [rank_id]}
 
-            # FIXME: If the modal input is the last input (i.e. done after a Discord role is selected), the prompt
-            # is not edited and is instead made ephemeral, editing the following response instead.
-            # Commenting out the next line still results in the same issue, as the edit is made after the final
-            # "binds added to the workflow" response is made.
+            if not discord_role:
+                await self.response.send(
+                    f"The rank ID `{rank_id}` has been stored for this bind.", ephemeral=True
+                )
 
-            await self.response.send(
-                f"The rank ID `{rank_id}` has been stored for this bind.", ephemeral=True
-            )
-
-        current_data = await self.current_data()
-
-        discord_role = current_data["discord_role"]["values"][0] if current_data.get("discord_role") else None
         group_rank = (
             current_data["group_rank"]["values"][0]
             if current_data.get("group_rank") and current_data["group_rank"]["values"]
@@ -504,11 +503,14 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                     b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds
                 ]
             )
+
+            # Start heading to main prompt before telling the user the bind was added.
+            yield await self.go_to(self.current_binds)
+
             await self.response.send(
                 "Bind added to your in-progress workflow. Click `Publish` to save your changes.",
                 ephemeral=True,
             )
-            yield await self.go_to(self.current_binds)
 
         if fired_component_id in ("group_rank", "discord_role"):
             await self.ack()
