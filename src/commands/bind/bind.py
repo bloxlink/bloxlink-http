@@ -383,12 +383,8 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
     ):
         """Prompt telling users to choose which bind type is being made."""
         match interaction.values[0]:
-            case "exact_match":
+            case "exact_match" | "gte" | "lte":
                 yield await self.go_to(self.bind_rank_and_role)
-            case "gte":
-                yield await self.go_to(self.bind_rank_and_above)
-            case "lte":
-                yield await self.go_to(self.bind_rank_and_below)
             case "range":
                 yield await self.go_to(self.bind_range)
             case "in_group" | "not_in_group":
@@ -398,10 +394,39 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
     async def bind_rank_and_role(
         self, interaction: hikari.ComponentInteraction, fired_component_id: str | None
     ):
-        """Prompts a user to choose a rank and a role to give."""
+        """Handle ==, <=, and >= bind types from a single location."""
 
         if fired_component_id != "modal_roleset":
             yield await self.response.defer()
+
+        current_data = await self.current_data()
+        user_choice = current_data["criteria_select"]["values"][0]
+
+        match user_choice:
+            case "gte":
+                title = "Bind Group Rank And Above"
+                description = (
+                    "Please choose the **lowest rank** for this bind. "
+                    "Everyone with this rank **and above** will be given this role."
+                )
+                modal_title = "Select a minimum group rank."
+
+            case "lte":
+                title = "Bind Group Rank And Below"
+                description = (
+                    "Please choose the **highest** group rank to give for this bind along with a corresponding Discord role to give. "
+                    "Everyone with this group rank **and below** will receive that role. "
+                    "No existing Discord role? No problem, just click `Create new role`."
+                )
+                modal_title = "Select a maximum group rank."
+
+            case _:
+                title = "Bind Group Rank"
+                description = (
+                    "Please select one group rank and a corresponding Discord role to give. "
+                    "No existing Discord role? No problem, just click `Create new role`."
+                )
+                modal_title = "Select a group rank."
 
         group_id = self.custom_id.group_id
         roblox_group = await get_group(group_id)
@@ -415,35 +440,16 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             components.append(PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1))
 
         yield PromptPageData(
-            title="Bind Group Rank",
-            description=(
-                "Please select one group rank and a corresponding Discord role to give. "
-                "No existing Discord role? No problem, just click `Create new role`."
-            ),
+            title=title,
+            description=description,
             components=components,
         )
 
-        # if fired_component_id == "new_role":
-        #     await self.edit_component(
-        #         discord_role={
-        #             "is_disabled": True,
-        #         },
-        #         new_role={"label": "Use existing role", "component_id": "new_role-existing_role"},
-        #     )
-        # elif fired_component_id == "new_role-existing_role":
-        #     await self.edit_component(
-        #         discord_role={
-        #             "is_disabled": False,
-        #         },
-        #         new_role={"label": "Create new role", "component_id": "new_role"},
-        #     )
-
-        current_data = await self.current_data()
         discord_role = current_data["discord_role"]["values"][0] if current_data.get("discord_role") else None
 
         if fired_component_id == "modal_roleset":
             local_modal = await PromptComponents.roleset_selection_modal(
-                title="Bind a Group Rank",
+                title=modal_title,
                 interaction=interaction,
                 prompt=self,
                 fired_component_id=fired_component_id,
@@ -463,8 +469,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                     ephemeral=True,
                 )
                 return
-            
-            
+
             await self.save_stateful_data(group_rank={"values": [rank_id]})
             # Force the saved rank_id into the memory instance of current_data.
             current_data["group_rank"] = {"values": [rank_id]}
@@ -484,6 +489,17 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             existing_pending_binds: list[GuildBind] = [
                 GuildBind(**b) for b in current_data.get("pending_binds", [])
             ]
+
+            group_criteria = {}
+            if user_choice == "gte":
+                group_criteria = {
+                    "roleset": int(group_rank) * -1
+                }  # negative rank means "current rank and above"
+            elif user_choice == "lte":
+                group_criteria = {"min": 1, "max": int(group_rank)}
+            else:
+                group_criteria = {"roleset": int(group_rank)}
+
             existing_pending_binds.append(
                 GuildBind(
                     roles=[discord_role],
@@ -491,9 +507,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                     criteria={
                         "type": "group",
                         "id": group_id,
-                        "group": {
-                            "roleset": int(group_rank),
-                        },
+                        "group": group_criteria,
                     },
                 )
             )
@@ -511,225 +525,6 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 "Bind added to your in-progress workflow. Click `Publish` to save your changes.",
                 ephemeral=True,
             )
-
-        if fired_component_id in ("group_rank", "discord_role"):
-            await self.ack()
-
-    @Prompt.programmatic_page()
-    async def bind_rank_and_above(
-        self, interaction: hikari.ComponentInteraction, fired_component_id: str | None
-    ):
-        """
-        Prompts a user to choose a rank and a role to give.
-        Used for >= bindings.
-        """
-
-        if fired_component_id != "modal_roleset":
-            yield await self.response.defer()
-
-        group_id = self.custom_id.group_id
-        roblox_group = await get_group(group_id)
-
-        components = [PromptComponents.discord_role_selector(min_values=1, max_values=1)]
-
-        # Only allow modal input if there's over 25 ranks.
-        if len(roblox_group.rolesets) > 25:
-            components.append(Button(label="Input a Group rank", component_id="modal_roleset"))
-        else:
-            components.append(PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1))
-
-        yield PromptPageData(
-            title="Bind Group Rank And Above",
-            description="Please choose the **lowest rank** for this bind. Everyone with this rank **and above** will be given this role.",
-            components=components,
-        )
-
-        # if fired_component_id == "new_role":
-        #     await self.edit_component(
-        #         discord_role={"is_disabled": True},
-        #         new_role={"label": "Use existing role", "component_id": "new_role-existing_role"},
-        #     )
-        # elif fired_component_id == "new_role-existing_role":
-        #     await self.edit_component(
-        #         discord_role={
-        #             "is_disabled": False,
-        #         },
-        #         new_role={"label": "Create new role", "component_id": "new_role"},
-        #     )
-
-        if fired_component_id == "modal_roleset":
-            local_modal = await PromptComponents.roleset_selection_modal(
-                title="Select a minimum group rank.",
-                interaction=interaction,
-                prompt=self,
-                fired_component_id=fired_component_id,
-            )
-
-            yield await self.response.send_modal(local_modal)
-
-            if not await local_modal.submitted():
-                return
-
-            modal_data = await local_modal.get_data()
-            rank_id = parse_modal_rank_input(modal_data["rank_input"], roblox_group)
-
-            if rank_id == -1:
-                yield await self.response.send_first(
-                    "That ID does not match a group rank in your roblox group! Please try again.",
-                    ephemeral=True,
-                )
-                return
-
-            await self.save_stateful_data(group_rank={"values": [rank_id]})
-            yield await self.response.send_first(
-                f"The rank ID `{rank_id}` has been stored for this bind.", ephemeral=True
-            )
-
-        current_data = await self.current_data()
-
-        discord_role = current_data["discord_role"]["values"][0] if current_data.get("discord_role") else None
-        group_rank = current_data["group_rank"]["values"][0] if current_data.get("group_rank") else None
-
-        if discord_role and group_rank:
-            existing_pending_binds: list[GuildBind] = [
-                GuildBind(**b) for b in current_data.get("pending_binds", [])
-            ]
-            existing_pending_binds.append(
-                GuildBind(
-                    roles=[discord_role],
-                    remove_roles=[],
-                    criteria={
-                        "type": "group",
-                        "id": group_id,
-                        "group": {
-                            "roleset": int(group_rank) * -1,  # negative rank means "current rank and above"
-                        },
-                    },
-                )
-            )
-
-            await self.save_stateful_data(
-                pending_binds=[
-                    b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds
-                ]
-            )
-            await self.response.send(
-                "Bind added to your in-progress workflow. Click `Publish` to save your changes.",
-                ephemeral=True,
-            )
-            yield await self.go_to(self.current_binds)
-
-        if fired_component_id in ("group_rank", "discord_role"):
-            await self.ack()
-
-    @Prompt.programmatic_page()
-    async def bind_rank_and_below(
-        self, interaction: hikari.ComponentInteraction, fired_component_id: str | None
-    ):
-        """Prompts a user to choose a rank and a role to give."""
-
-        if fired_component_id != "modal_roleset":
-            yield await self.response.defer()
-
-        group_id = self.custom_id.group_id
-        roblox_group = await get_group(group_id)
-
-        components = [PromptComponents.discord_role_selector(min_values=1, max_values=1)]
-
-        # Only allow modal input if there's over 25 ranks.
-        if len(roblox_group.rolesets) > 25:
-            components.append(Button(label="Input a Group rank", component_id="modal_roleset"))
-        else:
-            components.append(PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1))
-
-        yield PromptPageData(
-            title="Bind Group Rank And Below",
-            description=(
-                "Please choose the **highest** group rank to give for this bind along with a corresponding Discord role to give. "
-                "Everyone with this group rank **and below** will receive that role."
-                "No existing Discord role? No problem, just click `Create new role`."
-            ),
-            components=components,
-        )
-
-        # if fired_component_id == "new_role":
-        #     await self.edit_component(
-        #         discord_role={
-        #             "is_disabled": True,
-        #         },
-        #         new_role={"label": "Use existing role", "component_id": "new_role-existing_role"},
-        #     )
-        # elif fired_component_id == "new_role-existing_role":
-        #     await self.edit_component(
-        #         discord_role={
-        #             "is_disabled": False,
-        #         },
-        #         new_role={"label": "Create new role", "component_id": "new_role"},
-        #     )
-
-        if fired_component_id == "modal_roleset":
-            local_modal = await PromptComponents.roleset_selection_modal(
-                title="Select a maximum group rank.",
-                interaction=interaction,
-                prompt=self,
-                fired_component_id=fired_component_id,
-            )
-
-            yield await self.response.send_modal(local_modal)
-
-            if not await local_modal.submitted():
-                return
-
-            modal_data = await local_modal.get_data()
-            rank_id = parse_modal_rank_input(modal_data["rank_input"], roblox_group)
-
-            if rank_id == -1:
-                yield await self.response.send_first(
-                    "That ID does not match a group rank in your roblox group! Please try again.",
-                    ephemeral=True,
-                )
-                return
-
-            await self.save_stateful_data(group_rank={"values": [rank_id]})
-            yield await self.response.send_first(
-                f"The rank ID `{rank_id}` has been stored for this bind.", ephemeral=True
-            )
-
-        current_data = await self.current_data()
-
-        discord_role = current_data["discord_role"]["values"][0] if current_data.get("discord_role") else None
-        group_rank = (
-            current_data["group_rank"]["values"][0]
-            if current_data.get("group_rank") and current_data["group_rank"]["values"]
-            else None
-        )
-
-        if discord_role and group_rank:
-            existing_pending_binds: list[GuildBind] = [
-                GuildBind(**b) for b in current_data.get("pending_binds", [])
-            ]
-            existing_pending_binds.append(
-                GuildBind(
-                    roles=[discord_role],
-                    remove_roles=[],
-                    criteria={
-                        "type": "group",
-                        "id": group_id,
-                        "group": {"min": 1, "max": int(group_rank)},
-                    },
-                )
-            )
-
-            await self.save_stateful_data(
-                pending_binds=[
-                    b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds
-                ]
-            )
-            await self.response.send(
-                "Bind added to your in-progress workflow. Click `Publish` to save your changes.",
-                ephemeral=True,
-            )
-            yield await self.go_to(self.current_binds)
 
         if fired_component_id in ("group_rank", "discord_role"):
             await self.ack()
