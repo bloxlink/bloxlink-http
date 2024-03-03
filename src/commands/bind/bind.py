@@ -461,29 +461,24 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 return
 
             modal_data = await local_modal.get_data()
-            user_input: str = modal_data["rank_input"]
+            rank_id = parse_modal_rank_input(modal_data["rank_input"], roblox_group)
 
-            # TODO: Extract this logic out to a method so we can reuse it elsewhere?
-            if not user_input.isdigit():
-                # Fuzzy string match the user input to the roleset name.
-                roleset_mapping = {key: roleset.name for key, roleset in roblox_group.rolesets.items()}
-                _roleset_name, _, roleset_id = process.extractOne(query=user_input, choices=roleset_mapping)
+            if rank_id == -1:
+                yield await self.response.send_first(
+                    "That ID does not match a group rank in your roblox group! Please try again.",
+                    ephemeral=True,
+                )
+                return
 
-                user_input = roleset_id
+            await self.save_stateful_data(group_rank={"values": [rank_id]})
 
-            else:
-                if int(user_input) not in roblox_group.rolesets.keys():
-                    yield await self.response.send_first(
-                        "That ID does not match a group rank in your roblox group! Please try again.",
-                        ephemeral=True,
-                    )
-                    return
+            # FIXME: If the modal input is the last input (i.e. done after a Discord role is selected), the prompt
+            # is not edited and is instead made ephemeral, editing the following response instead.
+            # Commenting out the next line still results in the same issue, as the edit is made after the final
+            # "binds added to the workflow" response is made.
 
-                # valid input, continue.
-
-            await self.save_stateful_data(group_rank={"values": [user_input]})
-            yield await self.response.send_first(
-                f"The rank ID `{user_input}` has been stored for this bind.", ephemeral=True
+            await self.response.send(
+                f"The rank ID `{rank_id}` has been stored for this bind.", ephemeral=True
             )
 
         current_data = await self.current_data()
@@ -583,29 +578,18 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 return
 
             modal_data = await local_modal.get_data()
-            user_input: str = modal_data["rank_input"]
+            rank_id = parse_modal_rank_input(modal_data["rank_input"], roblox_group)
 
-            # TODO: Extract this logic out to a method so we can reuse it elsewhere?
-            if not user_input.isdigit():
-                # Fuzzy string match the user input to the roleset name.
-                roleset_mapping = {key: roleset.name for key, roleset in roblox_group.rolesets.items()}
-                _roleset_name, _, roleset_id = process.extractOne(query=user_input, choices=roleset_mapping)
+            if rank_id == -1:
+                yield await self.response.send_first(
+                    "That ID does not match a group rank in your roblox group! Please try again.",
+                    ephemeral=True,
+                )
+                return
 
-                user_input = roleset_id
-
-            else:
-                if int(user_input) not in roblox_group.rolesets.keys():
-                    yield await self.response.send_first(
-                        "That ID does not match a group rank in your roblox group! Please try again.",
-                        ephemeral=True,
-                    )
-                    return
-
-                # valid input, continue.
-
-            await self.save_stateful_data(group_rank={"values": [user_input]})
+            await self.save_stateful_data(group_rank={"values": [rank_id]})
             yield await self.response.send_first(
-                f"The rank ID `{user_input}` has been stored for this bind.", ephemeral=True
+                f"The rank ID `{rank_id}` has been stored for this bind.", ephemeral=True
             )
 
         current_data = await self.current_data()
@@ -704,29 +688,18 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 return
 
             modal_data = await local_modal.get_data()
-            user_input: str = modal_data["rank_input"]
+            rank_id = parse_modal_rank_input(modal_data["rank_input"], roblox_group)
 
-            # TODO: Extract this logic out to a method so we can reuse it elsewhere?
-            if not user_input.isdigit():
-                # Fuzzy string match the user input to the roleset name.
-                roleset_mapping = {key: roleset.name for key, roleset in roblox_group.rolesets.items()}
-                _roleset_name, _, roleset_id = process.extractOne(query=user_input, choices=roleset_mapping)
+            if rank_id == -1:
+                yield await self.response.send_first(
+                    "That ID does not match a group rank in your roblox group! Please try again.",
+                    ephemeral=True,
+                )
+                return
 
-                user_input = roleset_id
-
-            else:
-                if int(user_input) not in roblox_group.rolesets.keys():
-                    yield await self.response.send_first(
-                        "That ID does not match a group rank in your roblox group! Please try again.",
-                        ephemeral=True,
-                    )
-                    return
-
-                # valid input, continue.
-
-            await self.save_stateful_data(group_rank={"values": [user_input]})
+            await self.save_stateful_data(group_rank={"values": [rank_id]})
             yield await self.response.send_first(
-                f"The rank ID `{user_input}` has been stored for this bind.", ephemeral=True
+                f"The rank ID `{rank_id}` has been stored for this bind.", ephemeral=True
             )
 
         current_data = await self.current_data()
@@ -1230,3 +1203,26 @@ class PromptComponents:
                 )
             ],
         )
+
+
+def parse_modal_rank_input(user_input: str, roblox_group: RobloxGroup) -> int:
+    """Get a rank ID out from a modal TextInput.
+
+    Args:
+        user_input (str): Input from the user for that TextInput
+        roblox_group (RobloxGroup): _description_
+
+    Returns:
+        int: The found rank ID. If there is no match, -1 is returned.
+    """
+    if not user_input.isdigit():
+        # Fuzzy string match the user input to the roleset name.
+        roleset_mapping = {key: roleset.name for key, roleset in roblox_group.rolesets.items()}
+        _roleset_name, _, roleset_id = process.extractOne(query=user_input, choices=roleset_mapping)
+
+        user_input = roleset_id
+    else:
+        if int(user_input) not in roblox_group.rolesets.keys():
+            return -1
+
+    return int(user_input)
