@@ -151,10 +151,12 @@ class Response:
 
         if self.responded:
             if edit_original:
+                logging.debug("send_first() editing original interaction response, i=%s", self.interaction)
                 return await self.interaction.edit_initial_response(
                     content, embed=embed, components=components
                 )
 
+            logging.debug("send_first() sending new message over REST")
             return await self.send(content, embed=embed, components=components, ephemeral=ephemeral)
 
         self.responded = True
@@ -265,9 +267,15 @@ class Response:
 
             kwargs.pop("flags", None)  # edit_initial_response doesn't support ephemeral
 
+            logging.debug(
+                "Editing initial interaction response, id=%s, content=%s", self.interaction.id, content
+            )
             return await self.interaction.edit_initial_response(content, components=components, **kwargs)
 
         if self.responded:
+            logging.debug(
+                "Creating followup message (execute), id=%s, content=%s", self.interaction.id, content
+            )
             return await self.interaction.execute(
                 content, components=components, mentions_everyone=False, role_mentions=False, **kwargs
             )
@@ -275,10 +283,16 @@ class Response:
         self.responded = True
 
         if edit_original:
+            logging.debug(
+                "Editing initial interaction response, id=%s, content=%s", self.interaction.id, content
+            )
             return await self.interaction.edit_initial_response(
                 content, components=components, mentions_everyone=False, role_mentions=False, **kwargs
             )
 
+        logging.debug(
+            "Creating initial interaction response, id=%s, content=%s", self.interaction.id, content
+        )
         await self.interaction.create_initial_response(
             hikari.ResponseType.MESSAGE_CREATE,
             content,
@@ -289,6 +303,7 @@ class Response:
         )
 
         if fetch_message:
+            logging.debug("Fetching & returning initial response")
             return await self.interaction.fetch_initial_response()
 
     async def edit_message(
@@ -650,10 +665,12 @@ class Prompt(Generic[T]):
         self.current_page = self.pages[self.current_page_number]
 
         logging.debug(
-            "%s run_page() current page=%s %s",
+            "%s run_page() current page=%s %s, changing=%s, interaction=%s",
             hash_,
             self.current_page_number,
             self.current_page.details.title,
+            changing_page,
+            self.response.interaction,
         )
 
         generator_or_coroutine = self.current_page.func(
@@ -707,8 +724,10 @@ class Prompt(Generic[T]):
             logging.debug("%s run_page() built page %s", hash_, built_page.embed.title)
 
             if built_page.page_number != self.current_page_number:
+                logging.debug("built page does not match current page, returning")
                 return
 
+            logging.debug("calling send_first within changing_page")
             yield await self.response.send_first(
                 embed=built_page.embed,
                 components=built_page.action_rows,
