@@ -150,6 +150,7 @@ class Response:
             )
 
         if self.responded:
+            # TODO: Changing self.deferred here may/may not cause bugs. Not E2E tested.
             self.deferred = False
 
             if edit_original:
@@ -455,23 +456,27 @@ class Prompt(Generic[T]):
         return prompt
 
     @staticmethod
-    async def find_prompt(custom_id: Components.BaseCustomID, interaction: hikari.ComponentInteraction | hikari.ModalInteraction, response: Response=None, command:'commands.Command'=None) -> Self | None:
+    async def find_prompt(
+        custom_id: Components.BaseCustomID,
+        interaction: hikari.ComponentInteraction | hikari.ModalInteraction,
+        response: Response = None,
+        command: "commands.Command" = None,
+    ) -> Self | None:
         """Returns the matching prompt from the command."""
 
         if not command:
             for command_ in filter(lambda c: c.prompts, commands.slash_commands.values()):
                 for command_prompt in command_.prompts:
                     try:
-                        parsed_custom_id = PromptCustomID.from_str(str(custom_id)) # TODO
+                        parsed_custom_id = PromptCustomID.from_str(str(custom_id))  # TODO
                     except (TypeError, IndexError):
                         # Keeps prompts from preventing normal components from firing on iteration.
                         # Since we check for a valid handler
                         continue
 
-
-                    if (
-                        parsed_custom_id.command_name == command_.name
-                        and parsed_custom_id.prompt_name in (command_prompt.override_prompt_name, command_prompt.__name__)
+                    if parsed_custom_id.command_name == command_.name and parsed_custom_id.prompt_name in (
+                        command_prompt.override_prompt_name,
+                        command_prompt.__name__,
                     ):
                         command = command_
                         break
@@ -484,15 +489,15 @@ class Prompt(Generic[T]):
 
         for command_prompt in command.prompts:
             try:
-                parsed_custom_id = PromptCustomID.from_str(str(custom_id)) # TODO
+                parsed_custom_id = PromptCustomID.from_str(str(custom_id))  # TODO
             except (TypeError, IndexError):
                 # Keeps prompts from preventing normal components from firing on iteration.
                 # Since we check for a valid handler
                 continue
 
-            if (
-                parsed_custom_id.command_name == command.name
-                and parsed_custom_id.prompt_name in (command_prompt.override_prompt_name, command_prompt.__name__)
+            if parsed_custom_id.command_name == command.name and parsed_custom_id.prompt_name in (
+                command_prompt.override_prompt_name,
+                command_prompt.__name__,
             ):
                 new_prompt = await command_prompt.new_prompt(
                     prompt_instance=command_prompt,
@@ -904,7 +909,13 @@ class Prompt(Generic[T]):
             components=built_page.action_rows,
         )
 
-    async def edit_page(self, components: dict=UNDEFINED, content: str=None, embed: hikari.Embed=UNDEFINED, **new_page_data):
+    async def edit_page(
+        self,
+        components: dict = UNDEFINED,
+        content: str = None,
+        embed: hikari.Embed = UNDEFINED,
+        **new_page_data,
+    ):
         """Edit the current page."""
 
         hash_ = uuid.uuid4().hex
