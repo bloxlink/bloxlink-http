@@ -165,13 +165,32 @@ class Response:
         self.responded = True
 
         match self.interaction:
-            case hikari.CommandInteraction() | hikari.ModalInteraction():
+            case hikari.CommandInteraction():
                 response_builder = (
                     self.interaction.build_response()
                     .set_flags(hikari.messages.MessageFlag.EPHEMERAL if ephemeral else None)
                     .set_mentions_everyone(False)
                     .set_role_mentions(False)
                 )
+
+            case hikari.ModalInteraction():
+                # TODO: May cause issues?
+                # Also, tell Hikari devs how build_response does not allow using MESSAGE_UPDATE
+                # on ModalInteractions.
+                return await self.interaction.create_initial_response(
+                    (
+                        hikari.ResponseType.MESSAGE_CREATE
+                        if not edit_original
+                        else hikari.ResponseType.MESSAGE_UPDATE
+                    ),
+                    content,
+                    embed=embed,
+                    components=components if components else [],
+                    flags=hikari.messages.MessageFlag.EPHEMERAL if ephemeral else None,
+                    mentions_everyone=False,
+                    role_mentions=False,
+                )
+
             case hikari.ComponentInteraction():
                 response_builder = (
                     self.interaction.build_response(
