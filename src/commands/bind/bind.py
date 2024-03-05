@@ -309,10 +309,10 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 ]
 
                 if new_binds:
-                    # print(new_binds)
-                    # print(typed_new_binds)
+                    for bind in new_binds:
+                        await bind.entity.sync()
+
                     unsaved_binds = "\n".join([str(bind) for bind in new_binds])
-                    # print(unsaved_binds)
 
                     prompt_fields.append(
                         PromptPageData.Field(
