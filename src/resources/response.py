@@ -104,6 +104,7 @@ class Response:
         self.deferred = True
 
         if self.defer_through_rest:
+            logging.debug("Deferring via create_initial_response (REST)")
             if ephemeral:
                 return await self.interaction.create_initial_response(
                     hikari.ResponseType.DEFERRED_MESSAGE_UPDATE, flags=hikari.messages.MessageFlag.EPHEMERAL
@@ -112,10 +113,12 @@ class Response:
             return await self.interaction.create_initial_response(hikari.ResponseType.DEFERRED_MESSAGE_UPDATE)
 
         if self.interaction.type == hikari.InteractionType.APPLICATION_COMMAND:
+            logging.debug("Deferring via build_deferred_response for application command.")
             return self.interaction.build_deferred_response().set_flags(
                 hikari.messages.MessageFlag.EPHEMERAL if ephemeral else None
             )
 
+        logging.debug("Deferring via build_deferred_response")
         return self.interaction.build_deferred_response(
             hikari.ResponseType.DEFERRED_MESSAGE_CREATE
         ).set_flags(hikari.messages.MessageFlag.EPHEMERAL if ephemeral else None)
@@ -271,13 +274,18 @@ class Response:
             kwargs.pop("flags", None)  # edit_initial_response doesn't support ephemeral
 
             logging.debug(
-                "Editing initial interaction response, id=%s, content=%s", self.interaction.id, content
+                "Editing initial interaction response (post defer), id=%s, content=%s",
+                self.interaction.id,
+                content,
             )
             return await self.interaction.edit_initial_response(content, components=components, **kwargs)
 
         if self.responded:
             logging.debug(
-                "Creating followup message (execute), id=%s, content=%s", self.interaction.id, content
+                "Creating followup message (execute), id=%s, responded=%s, content=%s",
+                self.interaction.id,
+                self.responded,
+                content,
             )
             return await self.interaction.execute(
                 content, components=components, mentions_everyone=False, role_mentions=False, **kwargs
@@ -287,7 +295,10 @@ class Response:
 
         if edit_original:
             logging.debug(
-                "Editing initial interaction response, id=%s, content=%s", self.interaction.id, content
+                "Editing initial interaction response, id=%s, deferred=%s, content=%s",
+                self.interaction.id,
+                self.deferred,
+                content,
             )
             return await self.interaction.edit_initial_response(
                 content, components=components, mentions_everyone=False, role_mentions=False, **kwargs
@@ -885,6 +896,7 @@ class Prompt(Generic[T]):
 
         if not self.response.responded:
             # this stops the interaction from erroring
+            logging.debug("Deferring via ack()")
             await self.response.interaction.create_initial_response(
                 hikari.ResponseType.DEFERRED_MESSAGE_UPDATE
             )
