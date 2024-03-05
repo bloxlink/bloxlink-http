@@ -81,12 +81,16 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                         **bind_criteria,
                     )
 
+                # Hack so we can change field names with edit_page.
+                current_embed = interaction.message.embeds[0]
+                current_embed.title = f"New {bind_type} binds saved."
+                current_embed.description = "The binds on this menu were saved to your server. You can edit your binds at any time by running `/bind` again."
+                current_embed.edit_field(1, "Created Binds")
+                current_embed.color = GREEN_COLOR
+
                 # FIXME: Overriding the prompt in place instead of editing.
-                yield await self.edit_page(
-                    title=f"New {bind_type} binds saved.",
-                    description="The binds on this menu were saved to your server. "
-                    "You can edit your binds at any time by running `/bind` again.",
-                )
+                await self.edit_page(embed=current_embed, components={"new_bind": {}, "publish": {}})
+
                 yield await self.response.send(
                     "Your new binds have been saved to your server.", ephemeral=True
                 )
