@@ -951,18 +951,26 @@ class GroupRolesConfirmationPrompt(Prompt[GroupPromptCustomID]):
                     )
                 except BindConflictError:
                     await self.response.send(
-                        f"You already have a group binding for group [{group.name}](<{group.url}>). No changes were made.",
+                        content=f"You already have a group binding for [{group.name}](<{group.url}>). No changes were made.",
                         edit_original=True,
+                        embeds=[],
                     )
                     return
 
                 await self.response.send(
-                    f"Your group binding for group [{group.name}](<{group.url}>) has been saved. "
-                    "When people join your server, they will receive a Discord role that corresponds to their group rank. ",
+                    content=(
+                        f"Your group binding for [{group.name}](<{group.url}>) has been saved. "
+                        "When people join your server, they will receive a Discord role that corresponds to their group rank. "
+                    ),
                     edit_original=True,
+                    embeds=[],
                 )
             else:
-                await self.response.send("No changes were made.", edit_original=True)
+                await self.response.send(
+                    content="Cancelled. No changes were made.",
+                    edit_original=True,
+                    embeds=[],
+                )
 
 
 @bloxlink.command(
