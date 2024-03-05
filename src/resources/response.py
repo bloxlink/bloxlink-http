@@ -165,32 +165,13 @@ class Response:
         self.responded = True
 
         match self.interaction:
-            case hikari.CommandInteraction():
+            case hikari.CommandInteraction() | hikari.ModalInteraction():
                 response_builder = (
                     self.interaction.build_response()
                     .set_flags(hikari.messages.MessageFlag.EPHEMERAL if ephemeral else None)
                     .set_mentions_everyone(False)
                     .set_role_mentions(False)
                 )
-
-            case hikari.ModalInteraction():
-                # TODO: May cause issues?
-                # Also, tell Hikari devs how build_response does not allow using MESSAGE_UPDATE
-                # on ModalInteractions.
-                return await self.interaction.create_initial_response(
-                    (
-                        hikari.ResponseType.MESSAGE_CREATE
-                        if not edit_original
-                        else hikari.ResponseType.MESSAGE_UPDATE
-                    ),
-                    content,
-                    embed=embed,
-                    components=components if components else [],
-                    flags=hikari.messages.MessageFlag.EPHEMERAL if ephemeral else None,
-                    mentions_everyone=False,
-                    role_mentions=False,
-                )
-
             case hikari.ComponentInteraction():
                 response_builder = (
                     self.interaction.build_response(
@@ -754,12 +735,21 @@ class Prompt(Generic[T]):
                 return
 
             logging.debug("calling send_first within changing_page")
-            yield await self.response.send_first(
-                embed=built_page.embed,
-                components=built_page.action_rows,
-                edit_original=True,
-                build_components=False,
-            )
+            match self.response.interaction:
+                case hikari.ModalInteraction():
+                    yield await self.response.send(
+                        embed=built_page.embed,
+                        components=built_page.action_rows,
+                        edit_original=True,
+                        build_components=False,
+                    )
+                case _:
+                    yield await self.response.send_first(
+                        embed=built_page.embed,
+                        components=built_page.action_rows,
+                        edit_original=True,
+                        build_components=False,
+                    )
 
         if not self.current_page.programmatic:
             if hasattr(generator_or_coroutine, "__anext__"):
