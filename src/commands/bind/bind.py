@@ -481,6 +481,8 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 await self.response.send(
                     f"The rank ID `{rank_id}` has been stored for this bind.", ephemeral=True
                 )
+            else:
+                await self.ack()
 
         group_rank = (
             current_data["group_rank"]["values"][0]
@@ -615,6 +617,8 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                     f"The rank IDs `{min_rank_id}` and `{max_rank_id}` have been stored for this bind.",
                     ephemeral=True,
                 )
+            else:
+                await self.ack()
 
         group_ranks = (
             [int(x) for x in current_data["group_rank"]["values"]] if current_data.get("group_rank") else None
