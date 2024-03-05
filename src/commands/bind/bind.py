@@ -12,6 +12,7 @@ import resources.ui.modals as modal
 from resources.binds import create_bind
 from resources.bloxlink import instance as bloxlink
 from resources.commands import CommandContext, GenericCommand
+from resources.constants import GREEN_COLOR
 from resources.exceptions import BindConflictError, RobloxNotFound
 from resources.response import Prompt, PromptCustomID, PromptPageData
 from resources.ui.components import Button, RoleSelectMenu, TextInput, TextSelectMenu
@@ -276,9 +277,11 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 current_embed.title = "New group binds saved."
                 current_embed.description = "The binds on this menu were saved to your server. You can edit your binds at any time by running `/bind` again."
                 current_embed.edit_field(1, "Created Binds")
+                current_embed.color = GREEN_COLOR
 
                 # FIXME: Overriding the prompt in place instead of editing.
-                yield await self.edit_page(embed=current_embed)
+                await self.edit_page(embed=current_embed, components={"new_bind": {}, "publish": {}})
+
                 yield await self.response.send(
                     "Your new binds have been saved to your server.", ephemeral=True
                 )
