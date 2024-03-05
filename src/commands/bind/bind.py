@@ -105,6 +105,11 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
 
                 await self.finish()
 
+            case "delete_bind":
+                yield PromptPageData(title="", description="", fields=[], components=[])
+
+                yield await self.go_to(self.remove_unsaved_bind)
+
             case _:
                 # Not spawned from a button press on the generated prompt. Builds a new prompt.
                 current_bind_desc = await build_binds_desc(
@@ -113,7 +118,9 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                     bind_type=bind_type,
                 )
 
-                await self.clear_data("discord_role")  # clear the data so we can re-use the menu
+                await self.clear_data(
+                    "discord_role", "unbind_menu"
+                )  # clear the data so we can re-use the menu
 
                 prompt_fields = [
                     PromptPageData.Field(
@@ -156,6 +163,12 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                             component_id="publish",
                             is_disabled=len(new_binds) == 0,
                             style=Button.ButtonStyle.SUCCESS,
+                        ),
+                        Button(
+                            label="Remove an unsaved bind",
+                            component_id="delete_bind",
+                            style=Button.ButtonStyle.DANGER,
+                            is_disabled=len(new_binds) == 0,
                         ),
                     ],
                     footer_text=f"{bind_type.capitalize()}: {str(roblox_entity).replace('**', '')}",
@@ -233,6 +246,52 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
 
         if fired_component_id == "discord_role":
             await self.ack()
+
+    @Prompt.programmatic_page()
+    async def remove_unsaved_bind(
+        self, _interaction: hikari.ComponentInteraction, fired_component_id: str | None
+    ):
+        """Prompt someone to remove an unsaved binding from the list."""
+
+        current_data = await self.current_data()
+        new_binds = [GuildBind(**b) for b in current_data.get("pending_binds", [])]
+
+        components = [Button(label="Return", component_id="return", style=Button.ButtonStyle.SECONDARY)]
+        if len(new_binds) > 0:
+            components.insert(0, (await PromptComponents.unsaved_bind_selector(pending_binds=new_binds)))
+
+        unsaved_binds_str = "\n".join([f"{index}. {str(bind)[2:]}" for index, bind in enumerate(new_binds)])
+        yield PromptPageData(
+            title="Remove an unsaved bind.",
+            description=f"Use the selection menu below to remove some of your unsaved binds.\n{unsaved_binds_str}",
+            components=components,
+        )
+
+        match fired_component_id:
+            case "return":
+                yield await self.go_to(self.current_binds)
+                return
+
+            case "unbind_menu":
+                user_choice = current_data["unbind_menu"]["values"] if current_data.get("unbind_menu") else []
+
+                # Iterate from back to the start
+                for choice in sorted([int(x) for x in user_choice], reverse=True):
+                    new_binds.pop(choice)
+
+                await self.save_stateful_data(
+                    pending_binds=[b.model_dump(by_alias=True, exclude_unset=True) for b in new_binds]
+                )
+
+                response_text = (
+                    "The binds you have selected have been removed."
+                    if len(user_choice) != 0
+                    else "No changes have been made."
+                )
+                yield await self.response.send_first(response_text, ephemeral=True)
+
+                # Cause the selection component to update
+                await self.edit_component()
 
 
 class GroupPromptCustomID(PromptCustomID):
@@ -323,7 +382,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 )
 
                 await self.clear_data(
-                    "discord_role", "group_rank"
+                    "discord_role", "group_rank", "unbind_menu"
                 )  # clear the data so we can re-use the menu
 
                 prompt_fields = [
