@@ -3,7 +3,15 @@ from abc import ABC
 from typing import Literal
 
 import hikari
-from bloxlink_lib import GuildBind, build_binds_desc, get_badge, get_catalog_asset, get_gamepass, get_group, get_entity
+from bloxlink_lib import (
+    GuildBind,
+    build_binds_desc,
+    get_badge,
+    get_catalog_asset,
+    get_entity,
+    get_gamepass,
+    get_group,
+)
 from bloxlink_lib.models.groups import RobloxGroup
 from hikari.commands import CommandOption, OptionType
 from thefuzz import process
@@ -129,7 +137,7 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                             inline=True,
                         )
                     )
-                
+
                 # TODO: Maybe we can save the group/entity name to stateful data so we can pass it around instead.
                 roblox_entity = await get_entity(bind_type, self.custom_id.entity_id)
 
@@ -150,7 +158,7 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                             style=Button.ButtonStyle.SUCCESS,
                         ),
                     ],
-                    footer_text=f"{bind_type.capitalize()}: {str(roblox_entity).replace("**", "")}"
+                    footer_text=f"{bind_type.capitalize()}: {str(roblox_entity).replace('**', '')}",
                 )
 
     @Prompt.programmatic_page()
@@ -176,7 +184,7 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                 #     is_disabled=False,
                 # ),
             ],
-            footer_text=f"{bind_type.capitalize()}: {str(roblox_entity).replace("**", "")}",
+            footer_text=f"{bind_type.capitalize()}: {str(roblox_entity).replace('**', '')}",
         )
 
         if fired_component_id == "new_role":
@@ -301,6 +309,11 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
                 await self.finish()
 
+            case "delete_bind":
+                yield PromptPageData(title="", description="", fields=[], components=[])
+
+                yield await self.go_to(self.remove_unsaved_bind)
+
             case _:
                 # Not spawned from a button press on the generated prompt. Builds a new prompt.
                 current_bind_desc = await build_binds_desc(
@@ -353,8 +366,14 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                             is_disabled=len(new_binds) == 0,
                             style=Button.ButtonStyle.SUCCESS,
                         ),
+                        Button(
+                            label="Remove an unsaved bind",
+                            component_id="delete_bind",
+                            style=Button.ButtonStyle.DANGER,
+                            is_disabled=len(new_binds) == 0,
+                        ),
                     ],
-                    footer_text=f"Group: {str(roblox_group).replace("**", "")}",
+                    footer_text=f"Group: {str(roblox_group).replace('**', '')}",
                 )
 
     @Prompt.page(
@@ -458,12 +477,11 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         else:
             components.append(PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1))
 
-
         yield PromptPageData(
             title=title,
             description=description,
             components=components,
-            footer_text=f"Group: {str(roblox_group).replace("**", "")}",
+            footer_text=f"Group: {str(roblox_group).replace('**', '')}",
         )
 
         discord_role = current_data["discord_role"]["values"][0] if current_data.get("discord_role") else None
@@ -575,7 +593,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             description="Please select two group ranks and a corresponding Discord role to give. "
             "No existing Discord role? No problem, just click `Create new role`.",
             components=components,
-            footer_text=f"Group: {str(roblox_group).replace("**", "")}",
+            footer_text=f"Group: {str(roblox_group).replace('**', '')}",
         )
 
         # if fired_component_id == "new_role":
@@ -705,7 +723,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 #     is_disabled=False,
                 # ),
             ],
-            footer_text=f"Group: {str(roblox_group).replace("**", "")}",
+            footer_text=f"Group: {str(roblox_group).replace('**', '')}",
         )
 
         if fired_component_id == "new_role":
@@ -757,6 +775,52 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
         if fired_component_id == "discord_role":
             await self.ack()
+
+    @Prompt.programmatic_page()
+    async def remove_unsaved_bind(
+        self, _interaction: hikari.ComponentInteraction, fired_component_id: str | None
+    ):
+        """Prompt someone to remove an unsaved binding from the list."""
+
+        current_data = await self.current_data()
+        new_binds = [GuildBind(**b) for b in current_data.get("pending_binds", [])]
+
+        components = [Button(label="Return", component_id="return", style=Button.ButtonStyle.SECONDARY)]
+        if len(new_binds) > 0:
+            components.insert(0, (await PromptComponents.unsaved_bind_selector(pending_binds=new_binds)))
+
+        unsaved_binds_str = "\n".join([f"{index}. {str(bind)[2:]}" for index, bind in enumerate(new_binds)])
+        yield PromptPageData(
+            title="Remove an unsaved bind.",
+            description=f"Use the selection menu below to remove some of your unsaved binds.\n{unsaved_binds_str}",
+            components=components,
+        )
+
+        match fired_component_id:
+            case "return":
+                yield await self.go_to(self.current_binds)
+                return
+
+            case "unbind_menu":
+                user_choice = current_data["unbind_menu"]["values"] if current_data.get("unbind_menu") else []
+
+                # Iterate from back to the start
+                for choice in sorted([int(x) for x in user_choice], reverse=True):
+                    new_binds.pop(choice)
+
+                await self.save_stateful_data(
+                    pending_binds=[b.model_dump(by_alias=True, exclude_unset=True) for b in new_binds]
+                )
+
+                response_text = (
+                    "The binds you have selected have been removed."
+                    if len(user_choice) != 0
+                    else "No changes have been made."
+                )
+                yield await self.response.send_first(response_text, ephemeral=True)
+
+                # Cause the selection component to update
+                await self.edit_component()
 
 
 class GroupRolesConfirmationPrompt(Prompt[GroupPromptCustomID]):
@@ -1105,6 +1169,33 @@ class PromptComponents:
                     custom_id="max_rank_input",
                     required=True,
                 ),
+            ],
+        )
+
+    @staticmethod
+    async def unsaved_bind_selector(
+        *,
+        pending_binds: list[GuildBind] = None,
+        component_id: str = "unbind_menu",
+    ):
+        """Return a selection menu allowing people to remove unsaved bindings."""
+        if pending_binds is None:
+            raise ValueError("A list of pending binds is required.")
+
+        for bind in pending_binds:
+            await bind.entity.sync()
+
+        return TextSelectMenu(
+            placeholder="Select which binds to remove here...",
+            min_values=0,
+            max_values=len(pending_binds),
+            component_id=component_id,
+            options=[
+                TextSelectMenu.Option(
+                    label=f"{index + 1}: {bind.short_description.replace('**', '')}...",
+                    value=str(index),
+                )
+                for index, bind in enumerate(pending_binds)
             ],
         )
 
