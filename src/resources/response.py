@@ -48,6 +48,7 @@ class PromptPageData(BaseModel):
     title: str = None
     fields: list["Field"] = Field(default_factory=list)
     color: int = None
+    footer_text: str = None
 
     class Field(BaseModel):  # TODO: RENAME THIS TO PromptField
         """Represents a field in a prompt embed."""
@@ -551,6 +552,8 @@ class Prompt(Generic[T]):
             description=page.details.description,
             title=page.details.title or "Prompt",
         )
+
+        embed.set_footer(page.details.footer_text or None)
 
         # the message will only exist if this is a component interaction
         if (
