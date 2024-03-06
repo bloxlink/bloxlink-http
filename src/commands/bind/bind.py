@@ -472,7 +472,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                     except RobloxNotFound:
                         # Syncing failed for some reason, catch so the prompt doesn't die & cause issues.
                         pass
-                    
+
                     group_name = str(roblox_group).replace("**", "")
 
                     await self.save_stateful_data(group_name=group_name)
