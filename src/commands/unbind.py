@@ -113,7 +113,7 @@ async def component_generator(items: list[GuildBind], custom_id: UnbindCustomID)
     return [text_menu]
 
 
-@component_author_validation(parse_into=UnbindCustomID, defer=True)
+@component_author_validation(parse_into=UnbindCustomID, defer=True, ephemeral=False)
 async def unbind_pagination_button(ctx: CommandContext, custom_id: UnbindCustomID):
     """Handle the left and right buttons for pagination."""
 
