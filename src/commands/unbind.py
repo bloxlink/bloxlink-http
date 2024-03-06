@@ -1,13 +1,15 @@
-import hikari
+from typing import get_args
 
+import hikari
 from bloxlink_lib import VALID_BIND_TYPES, GuildBind
-from resources.ui.autocomplete import bind_category_autocomplete, bind_id_autocomplete
-from resources.ui.components import component_author_validation, TextSelectMenu, BaseCustomID, Component
-from resources.binds import delete_bind, get_binds, generate_binds_embed
+
+from resources.binds import delete_bind, generate_binds_embed, get_binds
 from resources.bloxlink import instance as bloxlink
 from resources.commands import CommandContext, GenericCommand
 from resources.exceptions import RobloxAPIError
 from resources.pagination import Paginator, PaginatorCustomID
+from resources.ui.autocomplete import bind_category_autocomplete, bind_id_autocomplete
+from resources.ui.components import BaseCustomID, Component, TextSelectMenu, component_author_validation
 
 MAX_BINDS_PER_PAGE = 10
 
@@ -27,7 +29,9 @@ class TextOptionValue(BaseCustomID):
     index: int
 
 
-async def embed_formatter(page_number: int, items: list[GuildBind], _guild_id: str | int, max_pages: int) -> hikari.Embed:
+async def embed_formatter(
+    page_number: int, items: list[GuildBind], _guild_id: str | int, max_pages: int
+) -> hikari.Embed:
     """Generates the embed for the page.
 
     Args:
@@ -73,11 +77,11 @@ async def component_generator(items: list[GuildBind], custom_id: UnbindCustomID)
             user_id=custom_id.user_id,
             category=custom_id.category,
             id=custom_id.id,
-            section="sel_discard"
+            section="sel_discard",
         ),
         placeholder="Select which bind should be removed",
         min_values=1,
-        max_values=len(items)
+        max_values=len(items),
     )
 
     if not items:
@@ -109,7 +113,6 @@ async def component_generator(items: list[GuildBind], custom_id: UnbindCustomID)
     return [text_menu]
 
 
-
 @component_author_validation(parse_into=UnbindCustomID, defer=True)
 async def unbind_pagination_button(ctx: CommandContext, custom_id: UnbindCustomID):
     """Handle the left and right buttons for pagination."""
@@ -135,10 +138,8 @@ async def unbind_pagination_button(ctx: CommandContext, custom_id: UnbindCustomI
         custom_formatter=embed_formatter,
         component_generation=component_generator,
         custom_id_format=UnbindCustomID(
-            command_name="unbind",
-            user_id=author_id,
-            category=category,
-            id=id_filter),
+            command_name="unbind", user_id=author_id, category=category, id=id_filter
+        ),
         include_cancel_button=True,
     )
 
@@ -178,12 +179,10 @@ async def unbind_discard_binding(ctx: CommandContext, custom_id: UnbindCustomID)
         custom_formatter=embed_formatter,
         component_generation=component_generator,
         custom_id_format=UnbindCustomID(
-            command_name="unbind",
-            user_id=user_id,
-            category=category,
-            id=id_filter),
+            command_name="unbind", user_id=user_id, category=category, id=id_filter
+        ),
         include_cancel_button=True,
-        item_filter=viewbinds_item_filter
+        item_filter=viewbinds_item_filter,
     )
 
     for value in selected_values:
@@ -192,7 +191,9 @@ async def unbind_discard_binding(ctx: CommandContext, custom_id: UnbindCustomID)
 
         if bind and bind.type != parsed_value.type:
             # probably the wrong bind, error out
-            return await response.send_first("You selected a bind that doesn't match the type you're trying to unbind.", ephemeral=True)
+            return await response.send_first(
+                "You selected a bind that doesn't match the type you're trying to unbind.", ephemeral=True
+            )
 
         bind_deletions.append(bind)
 
@@ -260,7 +261,16 @@ class UnbindCommand(GenericCommand):
         guild_id = ctx.guild_id
         user_id = ctx.user.id
 
-        guild_binds = await get_binds(guild_id, bind_id=int(id_option) if id_option and id_option.isdigit() else None, category=category)
+        category = "catalogAsset" if category == "catalogasset" else category.lower()
+        if category not in get_args(VALID_BIND_TYPES):
+            await ctx.response.send(
+                content="The category you gave was not valid. Please choose from the autocomplete options!"
+            )
+            return
+
+        guild_binds = await get_binds(
+            guild_id, bind_id=int(id_option) if id_option and id_option.isdigit() else None, category=category
+        )
 
         paginator = Paginator(
             guild_id,
@@ -270,12 +280,10 @@ class UnbindCommand(GenericCommand):
             custom_formatter=embed_formatter,
             component_generation=component_generator,
             custom_id_format=UnbindCustomID(
-                command_name="unbind",
-                user_id=user_id,
-                category=category,
-                id=id_option),
+                command_name="unbind", user_id=user_id, category=category, id=id_option
+            ),
             include_cancel_button=True,
-            item_filter=viewbinds_item_filter
+            item_filter=viewbinds_item_filter,
         )
 
         embed = await paginator.embed
