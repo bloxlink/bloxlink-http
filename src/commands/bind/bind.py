@@ -1389,20 +1389,22 @@ class PromptComponents:
             raise ValueError("A roblox_group is required when using group_rank_selector.")
 
         first_25_rolesets = itertools.islice(roblox_group.rolesets.items(), 0, 25)
+        menu_options = [
+            TextSelectMenu.Option(
+                label=str(roleset),
+                value=str(roleset_id),
+            )
+            for roleset_id, roleset in first_25_rolesets
+            if roleset_id != 0
+        ]
+        menu_options.reverse()
 
         return TextSelectMenu(
             placeholder=placeholder,
             min_values=min_values,
             max_values=max_values,
             component_id=component_id,
-            options=[
-                TextSelectMenu.Option(
-                    label=str(roleset),
-                    value=str(roleset_id),
-                )
-                for roleset_id, roleset in first_25_rolesets
-                if roleset_id != 0
-            ],
+            options=menu_options,
         )
 
     @staticmethod
