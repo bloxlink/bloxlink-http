@@ -1,3 +1,5 @@
+from typing import get_args
+
 import hikari
 from bloxlink_lib import VALID_BIND_TYPES, GuildBind, get_binds
 
@@ -58,7 +60,7 @@ def viewbinds_item_filter(items: list[GuildBind]):
     return sorted(items, key=lambda item: item.criteria.id)
 
 
-@component_author_validation(parse_into=ViewbindsCustomID, defer=True)
+@component_author_validation(parse_into=ViewbindsCustomID, defer=True, ephemeral=False)
 async def viewbinds_button(ctx: CommandContext, custom_id: ViewbindsCustomID):
     """Handle pagination left and right button presses."""
 
@@ -84,7 +86,7 @@ async def viewbinds_button(ctx: CommandContext, custom_id: ViewbindsCustomID):
         custom_id_format=ViewbindsCustomID(
             command_name="viewbinds",
             user_id=author_id,
-            category=category.lower(),
+            category=category,
             id=id_filter,
         ),
         item_filter=viewbinds_item_filter,
@@ -133,6 +135,13 @@ class ViewBindsCommand(GenericCommand):
         guild_id = ctx.guild_id
         user_id = ctx.user.id
 
+        category = "catalogAsset" if category == "catalogasset" else category.lower()
+        if category not in get_args(VALID_BIND_TYPES):
+            await ctx.response.send(
+                content="The category you gave was not valid. Please choose from the autocomplete options!"
+            )
+            return
+
         guild_binds = await get_binds(
             guild_id, bind_id=int(id_option) if id_option and id_option.isdigit() else None, category=category
         )
@@ -146,7 +155,7 @@ class ViewBindsCommand(GenericCommand):
             custom_id_format=ViewbindsCustomID(
                 command_name="viewbinds",
                 user_id=user_id,
-                category=category.lower(),
+                category=category,
                 id=id_option,
             ),
             item_filter=viewbinds_item_filter,
