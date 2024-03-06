@@ -1,8 +1,9 @@
 from typing import TYPE_CHECKING
-from bloxlink_lib import get_binds, BaseModel, RobloxUser
+
+from bloxlink_lib import BaseModel, RobloxUser, get_binds
+
 from resources.api.roblox import users
 from resources.exceptions import RobloxAPIError, RobloxNotFound
-
 
 if TYPE_CHECKING:
     from resources.commands import CommandContext
@@ -15,17 +16,16 @@ class AutocompleteOption(BaseModel):
     value: str
 
 
-async def bind_category_autocomplete(ctx: 'CommandContext'):
+async def bind_category_autocomplete(ctx: "CommandContext"):
     """Autocomplete for a bind category input based upon the binds the user has."""
 
     binds = await get_binds(ctx.guild_id)
-    print(binds)
     bind_types = set(bind.type for bind in binds)
 
     return ctx.response.send_autocomplete([AutocompleteOption(name=x, value=x.lower()) for x in bind_types])
 
 
-async def bind_id_autocomplete(ctx: 'CommandContext'):
+async def bind_id_autocomplete(ctx: "CommandContext"):
     """Autocomplete for bind ID inputs, expects that there is an additional category option in the
     command arguments that must be set prior to this argument."""
 
@@ -46,7 +46,14 @@ async def bind_id_autocomplete(ctx: 'CommandContext'):
         guild_binds = await get_binds(interaction.guild_id, category=category_option)
 
         if id_option:
-            filtered_binds = filter(None, set(bind.criteria.id for bind in guild_binds if bind.criteria.id and str(bind.criteria.id) == id_option))
+            filtered_binds = filter(
+                None,
+                set(
+                    bind.criteria.id
+                    for bind in guild_binds
+                    if bind.criteria.id and str(bind.criteria.id) == id_option
+                ),
+            )
         else:
             filtered_binds = filter(None, set(bind.criteria.id for bind in guild_binds))
 
@@ -56,11 +63,13 @@ async def bind_id_autocomplete(ctx: 'CommandContext'):
     return ctx.response.send_autocomplete(choices)
 
 
-async def roblox_lookup_autocomplete(ctx: 'CommandContext'):
+async def roblox_lookup_autocomplete(ctx: "CommandContext"):
     """Return a matching roblox user from a user's input."""
 
     interaction = ctx.interaction
-    option = next(x for x in interaction.options if x.is_focused) # Makes sure that we get the correct command input in a generic way
+    option = next(
+        x for x in interaction.options if x.is_focused
+    )  # Makes sure that we get the correct command input in a generic way
     user_input = str(option.value)
 
     user: RobloxUser = None
@@ -77,6 +86,8 @@ async def roblox_lookup_autocomplete(ctx: 'CommandContext'):
     if user:
         result_list.append(AutocompleteOption(name=f"{user.username} ({user.id})", value=str(user.id)))
     else:
-        result_list.append(AutocompleteOption(name="No user found. Please double check the username or ID.", value="no_user"))
+        result_list.append(
+            AutocompleteOption(name="No user found. Please double check the username or ID.", value="no_user")
+        )
 
     return ctx.response.send_autocomplete(result_list)
