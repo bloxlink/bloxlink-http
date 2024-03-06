@@ -57,7 +57,7 @@ async def handle_start(_):
     """Start the bot and sync commands"""
 
     if args.debug:
-        logging.basicConfig(level=logging.DEBUG, force=True, format="'%(asctime)s - %(levelname)s:%(name)s - %(message)s'")
+        logging.basicConfig(level=logging.DEBUG, force=True, format="%(asctime)s:%(levelname)s:%(name)s:%(message)s")
 
     await bot.start()
 
