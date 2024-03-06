@@ -77,8 +77,16 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                     # Used to generically pass rank specifications to create_bind.
                     bind_criteria = bind.criteria.model_dump()
 
-                    # TODO: If no role exists in the bind, make one with the same name as the rank(??) and save.
-                    # Maybe this should be done as part of the prior page, saves a request to roblox.
+                    for i, role in enumerate(bind.roles):
+                        # Create any new roles.
+                        # New roles are stored via the name given, use that name to make the role & store that instead.
+                        if not role.isdigit():
+                            new_role = await bloxlink.rest.create_role(
+                                interaction.guild_id,
+                                name=role,
+                                reason="Creating new role from /bind command input.",
+                            )
+                            bind.roles[i] = str(new_role.id)
 
                     await create_bind(
                         interaction.guild_id,
@@ -97,7 +105,10 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                 current_embed.color = GREEN_COLOR
 
                 # FIXME: Overriding the prompt in place instead of editing.
-                await self.edit_page(embed=current_embed, components={"new_bind": {}, "publish": {}})
+                await self.edit_page(
+                    embed=current_embed,
+                    components={"new_bind": {}, "publish": {}, "delete_bind": {}},
+                )
 
                 yield await self.response.send(
                     "Your new binds have been saved to your server.", ephemeral=True
@@ -222,12 +233,7 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
             modal_data = await local_modal.get_data()
             role_name = modal_data["role_name"]
 
-            new_role = await bloxlink.rest.create_role(
-                interaction.guild_id, name=role_name, reason="Creating new role from /bind command input."
-            )
-            current_data["discord_role"] = {"values": [str(new_role.id)]}
-
-            # await self.ack()
+            current_data["discord_role"] = {"values": [role_name]}
 
         elif fired_component_id == "new_role-er":
             await self.edit_component(
@@ -265,11 +271,13 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                     b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds
                 ]
             )
+
+            yield await self.go_to(self.current_binds)
+
             await self.response.send(
                 "Bind added to your in-progress workflow. Click `Publish` to save your changes.",
                 ephemeral=True,
             )
-            yield await self.go_to(self.current_binds)
 
         if fired_component_id == "discord_role":
             await self.ack()
