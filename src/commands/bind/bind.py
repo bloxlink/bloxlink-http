@@ -385,7 +385,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
                 for bind in new_binds:
                     # Used to generically pass rank specifications to create_bind.
-                    bind_criteria = bind.criteria.model_dump()
+                    bind_criteria = bind.criteria.model_dump(exclude_unset=True)
 
                     for role in bind.pending_new_roles:
                         # Create any new roles.
