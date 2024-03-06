@@ -132,6 +132,7 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
 
                 if new_binds:
                     for bind in new_binds:
+                        # TODO: Handle roblox errors.
                         await bind.entity.sync()
 
                     unsaved_binds = "\n".join([str(bind) for bind in new_binds])
@@ -175,11 +176,11 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                 )
 
     @Prompt.programmatic_page()
-    async def bind_role(self, _interaction: hikari.ComponentInteraction, fired_component_id: str | None):
+    async def bind_role(self, interaction: hikari.ComponentInteraction, fired_component_id: str | None):
         """Prompts for a user to select which roles will be given for bind."""
-        yield await self.response.defer()
 
-        current_data = await self.current_data()
+        if fired_component_id != "new_role":
+            yield await self.response.defer()
 
         bind_id = self.custom_id.entity_id
         bind_type = self.custom_id.entity_type
@@ -191,29 +192,47 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
             "No existing Discord role? No problem, just click `Create new role`.",
             components=[
                 PromptComponents.discord_role_selector(min_values=1),
-                # Button(
-                #     label="Create new role",
-                #     component_id="new_role",
-                #     is_disabled=False,
-                # ),
+                PromptComponents.create_role_button(),
             ],
             footer_text=f"{bind_type.capitalize()}: {str(roblox_entity).replace('**', '')}",
         )
 
+        current_data = await self.current_data()
+
         if fired_component_id == "new_role":
-            await self.edit_component(
-                discord_role={
-                    "is_disabled": True,
-                },
-                new_role={"label": "Use existing role", "component_id": "new_role-existing_role"},
+            local_modal = await PromptComponents.new_role_modal(
+                interaction=interaction,
+                prompt=self,
+                fired_component_id=fired_component_id,
             )
-        elif fired_component_id == "new_role-existing_role":
+
+            yield await self.response.send_modal(local_modal)
+
+            if not await local_modal.submitted():
+                return
+
+            modal_data = await local_modal.get_data()
+            role_name = modal_data["role_name"]
+
+            new_role = await bloxlink.rest.create_role(
+                interaction.guild_id, name=role_name, reason="Creating new role from /bind command input."
+            )
+            current_data["discord_role"] = {"values": [str(new_role.id)]}
+
+            # await self.ack()
+
+        elif fired_component_id == "new_role-er":
             await self.edit_component(
                 discord_role={
                     "is_disabled": False,
                 },
                 new_role={"label": "Create new role", "component_id": "new_role"},
             )
+
+            if current_data.get("discord_role"):
+                current_data.pop("discord_role")
+
+            return
 
         discord_role = current_data["discord_role"]["values"][0] if current_data.get("discord_role") else None
 
