@@ -89,7 +89,7 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                         **bind_criteria,
                     )
 
-                # Hack so we can change field names with edit_page.
+                # TODO Hack so we can change field names with edit_page.
                 current_embed = interaction.message.embeds[0]
                 current_embed.title = f"New {bind_type} binds saved."
                 current_embed.description = "The binds on this menu were saved to your server. You can edit your binds at any time by running `/bind` again."
