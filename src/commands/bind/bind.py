@@ -1218,7 +1218,7 @@ class PromptComponents:
         *,
         placeholder: str = "Choose a Discord role",
         min_values: int = 0,
-        max_values: int = 25,
+        max_values: int = 5,
         component_id: str = "discord_role",
         disabled: bool = False,
     ) -> RoleSelectMenu:
