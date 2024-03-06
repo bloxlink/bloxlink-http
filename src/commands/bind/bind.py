@@ -398,10 +398,17 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
                 for bind in new_binds:
                     # Used to generically pass rank specifications to create_bind.
-                    bind_criteria = bind.criteria.model_dump(exclude_unset=True)
+                    bind_criteria = bind.criteria.model_dump()
 
-                    # TODO: If no role exists in the bind, make one with the same name as the rank(??) and save.
-                    # Maybe this should be done as part of the prior page, saves a request to roblox.
+                    for role in bind.pending_new_roles:
+                        # Create any new roles.
+                        # New roles are stored via the name given, use that name to make the role & store that instead.
+                        new_role = await bloxlink.rest.create_role(
+                            interaction.guild_id,
+                            name=role,
+                            reason="Creating new role from /bind command input.",
+                        )
+                        bind.roles.append(str(new_role.id))
 
                     await create_bind(
                         interaction.guild_id,
