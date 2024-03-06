@@ -1123,13 +1123,24 @@ class GroupRolesConfirmationPrompt(Prompt[GroupPromptCustomID]):
             custom_id_format=GroupPromptCustomID,
         )
 
-    @Prompt.page(
-        PromptPageData(
+    @Prompt.programmatic_page()
+    async def role_create_confirmation_pgrm(
+        self,
+        interaction: hikari.CommandInteraction | hikari.ComponentInteraction,
+        fired_component_id: str,
+    ):
+        yield await self.response.defer()
+
+        group = RobloxGroup(id=self.custom_id.group_id)
+        try:
+            await group.sync()
+        except (RobloxAPIError, RobloxNotFound):
+            pass
+
+        yield PromptPageData(
             title="Role Creation Confirmation",
-            description=(
-                "Would you like Bloxlink to create Discord roles for each of your group's roles?\n\n**Please note, even if you "
-                "choose 'no', the bind will still be created.**"
-            ),
+            description=f"Would you like Bloxlink to create Discord roles for each of your [group]({group.url})'s roles?"
+            "\n\n**Please note, even if you choose 'no', the bind will still be created.**",
             components=[
                 Button(
                     label="Yes",
@@ -1147,23 +1158,13 @@ class GroupRolesConfirmationPrompt(Prompt[GroupPromptCustomID]):
                     style=Button.ButtonStyle.SECONDARY,
                 ),
             ],
+            footer_text=f"Group: {str(group).replace('**', '')}",
         )
-    )
-    async def role_create_confirmation(
-        self,
-        interaction: hikari.CommandInteraction | hikari.ComponentInteraction,
-        fired_component_id: str,
-    ):
-        """Default page for the prompt. Ask if the bot can create groupset roles."""
 
         guild_id = interaction.guild_id
 
-        yield await self.response.defer()
-
-        if fired_component_id:
-            group = await get_group(self.custom_id.group_id)
-
-            if fired_component_id == "yes":
+        match fired_component_id:
+            case "yes":
                 guild_roles = await bloxlink.fetch_roles(guild_id, key_as_role_name=True)
 
                 for roleset in reversed(group.rolesets.values()):
@@ -1173,33 +1174,38 @@ class GroupRolesConfirmationPrompt(Prompt[GroupPromptCustomID]):
                             name=roleset.name,
                         )
 
-            if fired_component_id != "cancel":
-                try:
-                    await create_bind(
-                        guild_id, bind_type="group", bind_id=self.custom_id.group_id, dynamic_roles=True
-                    )
-                except BindConflictError:
-                    await self.response.send(
-                        content=f"You already have a group binding for [{group.name}](<{group.url}>). No changes were made.",
-                        edit_original=True,
-                        embeds=[],
-                    )
-                    return
-
-                await self.response.send(
-                    content=(
-                        f"Your group binding for [{group.name}](<{group.url}>) has been saved. "
-                        "When people join your server, they will receive a Discord role that corresponds to their group rank. "
-                    ),
-                    edit_original=True,
-                    embeds=[],
-                )
-            else:
+            case "cancel":
                 await self.response.send(
                     content="Cancelled. No changes were made.",
                     edit_original=True,
                     embeds=[],
                 )
+                return
+
+        # Safeguard to not create a bind when we're not supposed to.
+        if not fired_component_id:
+            return
+
+        try:
+            await create_bind(
+                guild_id, bind_type="group", bind_id=self.custom_id.group_id, dynamic_roles=True
+            )
+        except BindConflictError:
+            await self.response.send(
+                content=f"You already have a group binding for [{group.name}](<{group.url}>). No changes were made.",
+                edit_original=True,
+                embeds=[],
+            )
+            return
+
+        await self.response.send(
+            content=(
+                f"Your group binding for [{group.name}](<{group.url}>) has been saved. "
+                "When people join your server, they will receive a Discord role that corresponds to their group rank. "
+            ),
+            edit_original=True,
+            embeds=[],
+        )
 
 
 @bloxlink.command(
