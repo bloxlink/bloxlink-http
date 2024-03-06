@@ -1,14 +1,13 @@
 import itertools
-from abc import ABC
 from typing import Literal
 
 import hikari
 from bloxlink_lib import (
     GuildBind,
     build_binds_desc,
+    create_entity,
     get_badge,
     get_catalog_asset,
-    get_entity,
     get_gamepass,
     get_group,
 )
@@ -77,16 +76,15 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                     # Used to generically pass rank specifications to create_bind.
                     bind_criteria = bind.criteria.model_dump()
 
-                    for i, role in enumerate(bind.roles):
+                    for role in bind.pending_new_roles:
                         # Create any new roles.
                         # New roles are stored via the name given, use that name to make the role & store that instead.
-                        if not role.isdigit():
-                            new_role = await bloxlink.rest.create_role(
-                                interaction.guild_id,
-                                name=role,
-                                reason="Creating new role from /bind command input.",
-                            )
-                            bind.roles[i] = str(new_role.id)
+                        new_role = await bloxlink.rest.create_role(
+                            interaction.guild_id,
+                            name=role,
+                            reason="Creating new role from /bind command input.",
+                        )
+                        bind.roles.append(str(new_role.id))
 
                     await create_bind(
                         interaction.guild_id,
@@ -130,7 +128,7 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                 )
 
                 await self.clear_data(
-                    "discord_role", "unbind_menu"
+                    "discord_role", "unbind_menu", "entity_str"
                 )  # clear the data so we can re-use the menu
 
                 prompt_fields = [
@@ -161,7 +159,12 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
 
                 entity_str = await self.current_data(key_name="entity_str", raise_exception=False)
                 if not entity_str:
-                    roblox_entity = await get_entity(bind_type, self.custom_id.entity_id)
+                    roblox_entity = create_entity(bind_type, self.custom_id.entity_id)
+
+                    try:
+                        await roblox_entity.sync()
+                    except RobloxAPIError:
+                        pass
 
                     entity_str = str(roblox_entity).replace("**", "")
 
@@ -218,35 +221,38 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
 
         current_data = await self.current_data()
 
-        if fired_component_id == "new_role":
-            local_modal = await PromptComponents.new_role_modal(
-                interaction=interaction,
-                prompt=self,
-                fired_component_id=fired_component_id,
-            )
+        match fired_component_id:
+            case "new_role":
+                local_modal = await PromptComponents.new_role_modal(
+                    interaction=interaction,
+                    prompt=self,
+                    fired_component_id=fired_component_id,
+                )
 
-            yield await self.response.send_modal(local_modal)
+                yield await self.response.send_modal(local_modal)
 
-            if not await local_modal.submitted():
+                if not await local_modal.submitted():
+                    return
+
+                modal_data = await local_modal.get_data()
+                role_name = modal_data["role_name"]
+
+                current_data["discord_role"] = {"values": [role_name]}
+
+                await self.ack()
+
+            case "new_role-er":
+                await self.edit_component(
+                    discord_role={
+                        "is_disabled": False,
+                    },
+                    new_role={"label": "Create new role", "component_id": "new_role"},
+                )
+
+                if current_data.get("discord_role"):
+                    current_data.pop("discord_role")
+
                 return
-
-            modal_data = await local_modal.get_data()
-            role_name = modal_data["role_name"]
-
-            current_data["discord_role"] = {"values": [role_name]}
-
-        elif fired_component_id == "new_role-er":
-            await self.edit_component(
-                discord_role={
-                    "is_disabled": False,
-                },
-                new_role={"label": "Create new role", "component_id": "new_role"},
-            )
-
-            if current_data.get("discord_role"):
-                current_data.pop("discord_role")
-
-            return
 
         discord_role = current_data["discord_role"]["values"][0] if current_data.get("discord_role") else None
 
@@ -255,16 +261,30 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
             existing_pending_binds: list[GuildBind] = [
                 GuildBind(**b) for b in current_data.get("pending_binds", [])
             ]
-            existing_pending_binds.append(
-                GuildBind(
-                    roles=[discord_role],
-                    remove_roles=[],
-                    criteria={
-                        "type": bind_type,
-                        "id": bind_id,
-                    },
+
+            if not discord_role.isdigit():
+                existing_pending_binds.append(
+                    GuildBind(
+                        roles=[],
+                        remove_roles=[],
+                        pending_new_roles=[discord_role],
+                        criteria={
+                            "type": bind_type,
+                            "id": bind_id,
+                        },
+                    )
                 )
-            )
+            else:
+                existing_pending_binds.append(
+                    GuildBind(
+                        roles=[discord_role],
+                        remove_roles=[],
+                        criteria={
+                            "type": bind_type,
+                            "id": bind_id,
+                        },
+                    )
+                )
 
             await self.save_stateful_data(
                 pending_binds=[
@@ -417,7 +437,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 )
 
                 await self.clear_data(
-                    "discord_role", "group_rank", "unbind_menu"
+                    "discord_role", "group_rank", "unbind_menu", "group_name"
                 )  # clear the data so we can re-use the menu
 
                 prompt_fields = [
@@ -447,7 +467,12 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
 
                 group_name = await self.current_data(key_name="group_name", raise_exception=False)
                 if not group_name:
-                    roblox_group = await get_group(self.custom_id.group_id)
+                    try:
+                        roblox_group = await get_group(self.custom_id.group_id)
+                    except RobloxNotFound:
+                        # Syncing failed for some reason, catch so the prompt doesn't die & cause issues.
+                        pass
+                    
                     group_name = str(roblox_group).replace("**", "")
 
                     await self.save_stateful_data(group_name=group_name)
@@ -569,6 +594,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 modal_title = "Select a group rank."
 
         group_id = self.custom_id.group_id
+        # TODO: Consider try/except all get_group calls.
         roblox_group = await get_group(group_id)
 
         components = [PromptComponents.discord_role_selector(min_values=1, max_values=1)]
@@ -1299,7 +1325,10 @@ class PromptComponents:
             raise ValueError("A list of pending binds is required.")
 
         for bind in pending_binds:
-            await bind.entity.sync()
+            try:
+                await bind.entity.sync()
+            except RobloxAPIError:
+                pass
 
         return TextSelectMenu(
             placeholder="Select which binds to remove here...",
