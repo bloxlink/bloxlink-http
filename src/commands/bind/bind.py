@@ -797,7 +797,9 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         if len(roblox_group.rolesets) > 25:
             components.append(Button(label="Select group ranks", component_id="modal_roleset"))
         else:
-            components.insert(1, PromptComponents.group_rank_selector(roblox_group=roblox_group))
+            components.insert(
+                1, PromptComponents.group_rank_selector(roblox_group=roblox_group, min_values=2)
+            )
 
         current_data = await self.current_data()
 
@@ -1374,7 +1376,7 @@ class PromptComponents:
         *,
         roblox_group: RobloxGroup = None,
         placeholder: str = "Choose a group rank",
-        min_values: int = 2,
+        min_values: int = 0,
         max_values: int = 2,
         component_id: str = "group_rank",
     ) -> TextSelectMenu:
