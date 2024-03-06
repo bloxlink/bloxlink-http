@@ -566,12 +566,15 @@ class Prompt(Generic[T]):
 
         if page.details.components:
             for component in page.details.components:
-                print("setting custom id", self.custom_id_format)
+                logging.debug("Setting custom ID: class=%s", self.custom_id_format)
+
                 component_custom_id = self.custom_id.set_fields(
                     component_custom_id=component.component_id,
                     prompt_message_id=self.custom_id.prompt_message_id,
                 )
                 component.custom_id = str(component_custom_id)
+
+                logging.debug("Custom ID made: %s", component.custom_id)
 
             action_rows = Components.clean_action_rows(
                 functools.reduce(
