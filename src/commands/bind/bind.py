@@ -146,8 +146,13 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                         )
                     )
 
-                # TODO: Maybe we can save the group/entity name to stateful data so we can pass it around instead.
-                roblox_entity = await get_entity(bind_type, self.custom_id.entity_id)
+                entity_str = await self.current_data(key_name="entity_str", raise_exception=False)
+                if not entity_str:
+                    roblox_entity = await get_entity(bind_type, self.custom_id.entity_id)
+
+                    entity_str = str(roblox_entity).replace("**", "")
+
+                    await self.save_stateful_data(entity_str=entity_str)
 
                 yield PromptPageData(
                     title=f"{'[UNSAVED CHANGES] ' if new_binds else ''}New {bind_type.capitalize()} Bind",
@@ -172,7 +177,7 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                             is_disabled=len(new_binds) == 0,
                         ),
                     ],
-                    footer_text=f"{bind_type.capitalize()}: {str(roblox_entity).replace('**', '')}",
+                    footer_text=f"{bind_type.capitalize()}: {entity_str}",
                 )
 
     @Prompt.programmatic_page()
@@ -184,7 +189,8 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
 
         bind_id = self.custom_id.entity_id
         bind_type = self.custom_id.entity_type
-        roblox_entity = await get_entity(bind_type, bind_id)
+
+        current_data = await self.current_data()
 
         yield PromptPageData(
             title="Bind Discord Role",
@@ -194,7 +200,7 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                 PromptComponents.discord_role_selector(min_values=1),
                 PromptComponents.create_role_button(),
             ],
-            footer_text=f"{bind_type.capitalize()}: {str(roblox_entity).replace('**', '')}",
+            footer_text=f"{bind_type.capitalize()}: {current_data.get('entity_str', bind_id)}",
         )
 
         current_data = await self.current_data()
@@ -426,7 +432,12 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                         )
                     )
 
-                roblox_group = await get_group(self.custom_id.group_id)
+                group_name = await self.current_data(key_name="group_name", raise_exception=False)
+                if not group_name:
+                    roblox_group = await get_group(self.custom_id.group_id)
+                    group_name = str(roblox_group).replace("**", "")
+
+                    await self.save_stateful_data(group_name=group_name)
 
                 yield PromptPageData(
                     title=f"{'[UNSAVED CHANGES] ' if new_binds else ''}New Group Bind",
@@ -451,7 +462,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                             is_disabled=len(new_binds) == 0,
                         ),
                     ],
-                    footer_text=f"Group: {str(roblox_group).replace('**', '')}",
+                    footer_text=f"Group: {group_name}",
                 )
 
     @Prompt.page(
@@ -559,7 +570,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             title=title,
             description=description,
             components=components,
-            footer_text=f"Group: {str(roblox_group).replace('**', '')}",
+            footer_text=f"Group: {current_data.get('group_name', group_id)}",
         )
 
         discord_role = current_data["discord_role"]["values"][0] if current_data.get("discord_role") else None
@@ -666,12 +677,14 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         else:
             components.append(PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=2))
 
+        current_data = await self.current_data()
+
         yield PromptPageData(
             title="Bind Group Range",
             description="Please select two group ranks and a corresponding Discord role to give. "
             "No existing Discord role? No problem, just click `Create new role`.",
             components=components,
-            footer_text=f"Group: {str(roblox_group).replace('**', '')}",
+            footer_text=f"Group: {current_data.get('group_name', group_id)}",
         )
 
         # if fired_component_id == "new_role":
@@ -689,7 +702,6 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         #         new_role={"label": "Create new role", "component_id": "new_role"},
         #     )
 
-        current_data = await self.current_data()
         discord_roles = current_data["discord_role"]["values"] if current_data.get("discord_role") else None
 
         if fired_component_id == "modal_roleset":
@@ -787,7 +799,6 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         desc_stem = "users not in the group" if bind_flag == "guest" else "group members"
 
         group_id = self.custom_id.group_id
-        roblox_group = await get_group(group_id)
 
         yield PromptPageData(
             title="Bind Discord Role",
@@ -801,7 +812,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 #     is_disabled=False,
                 # ),
             ],
-            footer_text=f"Group: {str(roblox_group).replace('**', '')}",
+            footer_text=f"Group: {current_data.get('group_name', group_id)}",
         )
 
         if fired_component_id == "new_role":
