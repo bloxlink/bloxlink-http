@@ -269,7 +269,7 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
             else:
                 existing_pending_binds.append(
                     GuildBind(
-                        roles=[*discord_role],
+                        roles=discord_role,
                         remove_roles=[],
                         criteria={
                             "type": bind_type,
@@ -751,7 +751,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             else:
                 existing_pending_binds.append(
                     GuildBind(
-                        roles=[*discord_role],
+                        roles=discord_role,
                         remove_roles=[],
                         criteria={
                             "type": "group",
