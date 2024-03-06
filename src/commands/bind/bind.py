@@ -259,20 +259,20 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
 
                 return
 
-        discord_role = current_data["discord_role"]["values"][0] if current_data.get("discord_role") else None
+        discord_role = current_data["discord_role"]["values"] if current_data.get("discord_role") else None
 
-        # TODO: Handle "create new role" logic. Can't exit the prompt with that set currently.
         if discord_role:
             existing_pending_binds: list[GuildBind] = [
                 GuildBind(**b) for b in current_data.get("pending_binds", [])
             ]
 
-            if not discord_role.isdigit():
+            # Creating a new role, only accept 1 input.
+            if not discord_role[0].isdigit():
                 existing_pending_binds.append(
                     GuildBind(
                         roles=[],
                         remove_roles=[],
-                        pending_new_roles=[discord_role],
+                        pending_new_roles=[discord_role[0]],
                         criteria={
                             "type": bind_type,
                             "id": bind_id,
@@ -282,7 +282,7 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
             else:
                 existing_pending_binds.append(
                     GuildBind(
-                        roles=[discord_role],
+                        roles=[*discord_role],
                         remove_roles=[],
                         criteria={
                             "type": bind_type,
