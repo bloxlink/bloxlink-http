@@ -959,11 +959,13 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             await self.ack()
 
     @Prompt.programmatic_page()
-    async def bind_role(self, _interaction: hikari.ComponentInteraction, fired_component_id: str | None):
+    async def bind_role(self, interaction: hikari.ComponentInteraction, fired_component_id: str | None):
         """Prompts for a user to select which roles will be given for bind.
         Used for guest bindings & all group member bindings.
         """
-        yield await self.response.defer()
+
+        if fired_component_id != "new_role":
+            yield await self.response.defer()
 
         current_data = await self.current_data()
         user_choice = current_data["criteria_select"]["values"][0]
@@ -978,62 +980,84 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             description=f"Please select a Discord role to give to {desc_stem}. "
             "No existing Discord role? No problem, just click `Create new role`.",
             components=[
-                PromptComponents.discord_role_selector(min_values=0, max_values=1),
-                # Button(
-                #     label="Create new role",
-                #     component_id="new_role",
-                #     is_disabled=False,
-                # ),
+                PromptComponents.discord_role_selector(min_values=1),
+                PromptComponents.create_role_button(),
             ],
             footer_text=f"Group: {current_data.get('group_name', group_id)}",
         )
 
-        if fired_component_id == "new_role":
-            await self.edit_component(
-                discord_role={
-                    "is_disabled": True,
-                },
-                new_role={"label": "Use existing role", "component_id": "new_role-existing_role"},
-            )
-        elif fired_component_id == "new_role-existing_role":
-            await self.edit_component(
-                discord_role={
-                    "is_disabled": False,
-                },
-                new_role={"label": "Create new role", "component_id": "new_role"},
-            )
+        match fired_component_id:
+            case "new_role":
+                local_modal = await PromptComponents.new_role_modal(
+                    interaction=interaction,
+                    prompt=self,
+                    fired_component_id=fired_component_id,
+                )
+
+                yield await self.response.send_modal(local_modal)
+
+                if not await local_modal.submitted():
+                    return
+
+                modal_data = await local_modal.get_data()
+                role_name = modal_data["role_name"]
+
+                current_data["discord_role"] = {"values": [role_name]}
+
+                await self.ack()
 
         group_id = self.custom_id.group_id
-        discord_role = current_data["discord_role"]["values"][0] if current_data.get("discord_role") else None
+        discord_role = current_data["discord_role"]["values"] if current_data.get("discord_role") else None
 
-        # TODO: Handle "create new role" logic. Can't exit the prompt with that set currently.
         if discord_role:
             existing_pending_binds: list[GuildBind] = [
                 GuildBind(**b) for b in current_data.get("pending_binds", [])
             ]
-            existing_pending_binds.append(
-                GuildBind(
-                    roles=[discord_role],
-                    remove_roles=[],
-                    criteria={
-                        "type": "group",
-                        "id": group_id,
-                        "group": {
-                            bind_flag: True,
+
+            # Creating a new role, only accept 1 input.
+            if not discord_role[0].isdigit():
+                existing_pending_binds.append(
+                    GuildBind(
+                        roles=[],
+                        remove_roles=[],
+                        pending_new_roles=[discord_role[0]],
+                        criteria={
+                            "type": "group",
+                            "id": group_id,
+                            "group": {
+                                bind_flag: True,
+                            },
                         },
-                    },
+                    )
                 )
-            )
+
+            else:
+                existing_pending_binds.append(
+                    GuildBind(
+                        roles=discord_role,
+                        remove_roles=[],
+                        criteria={
+                            "type": "group",
+                            "id": group_id,
+                            "group": {
+                                bind_flag: True,
+                            },
+                        },
+                    )
+                )
+
             await self.save_stateful_data(
                 pending_binds=[
                     b.model_dump(by_alias=True, exclude_unset=True) for b in existing_pending_binds
                 ]
             )
+
+            yield await self.go_to(self.current_binds)
+
             await self.response.send(
                 "Bind added to your in-progress workflow. Click `Publish` to save your changes.",
                 ephemeral=True,
             )
-            yield await self.go_to(self.current_binds)
 
         if fired_component_id == "discord_role":
             await self.ack()
