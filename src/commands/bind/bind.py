@@ -21,7 +21,7 @@ from resources.binds import create_bind
 from resources.bloxlink import instance as bloxlink
 from resources.commands import CommandContext, GenericCommand
 from resources.constants import GREEN_COLOR
-from resources.exceptions import BindConflictError, RobloxNotFound
+from resources.exceptions import BindConflictError, RobloxAPIError, RobloxNotFound
 from resources.response import Prompt, PromptCustomID, PromptPageData
 from resources.ui.components import Button, RoleSelectMenu, TextInput, TextSelectMenu
 
@@ -131,9 +131,11 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                 ]
 
                 if new_binds:
-                    for bind in new_binds:
-                        # TODO: Handle roblox errors.
-                        await bind.entity.sync()
+                    try:
+                        for bind in new_binds:
+                            await bind.entity.sync()
+                    except RobloxAPIError:
+                        pass
 
                     unsaved_binds = "\n".join([str(bind) for bind in new_binds])
                     # print(unsaved_binds)
@@ -419,8 +421,11 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 ]
 
                 if new_binds:
-                    for bind in new_binds:
-                        await bind.entity.sync()
+                    try:
+                        for bind in new_binds:
+                            await bind.entity.sync()
+                    except RobloxAPIError:
+                        pass
 
                     unsaved_binds = "\n".join([str(bind) for bind in new_binds])
 
