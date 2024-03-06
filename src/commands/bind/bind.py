@@ -246,19 +246,6 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
 
                 await self.ack()
 
-            case "new_role-er":
-                await self.edit_component(
-                    discord_role={
-                        "is_disabled": False,
-                    },
-                    new_role={"label": "Create new role", "component_id": "new_role"},
-                )
-
-                if current_data.get("discord_role"):
-                    current_data.pop("discord_role")
-
-                return
-
         discord_role = current_data["discord_role"]["values"] if current_data.get("discord_role") else None
 
         if discord_role:
