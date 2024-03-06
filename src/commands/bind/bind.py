@@ -103,9 +103,14 @@ class GenericBindPrompt(Prompt[GenericBindPromptCustomID]):
                 current_embed.color = GREEN_COLOR
 
                 # FIXME: Overriding the prompt in place instead of editing.
+                # Disabling components here in case self.finish() doesn't fire properly for some reason.
                 await self.edit_page(
                     embed=current_embed,
-                    components={"new_bind": {}, "publish": {}, "delete_bind": {}},
+                    components={
+                        "new_bind": {"is_disabled": True},
+                        "publish": {"is_disabled": True},
+                        "delete_bind": {"is_disabled": True},
+                    },
                 )
 
                 yield await self.response.send(
@@ -415,7 +420,15 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 current_embed.color = GREEN_COLOR
 
                 # FIXME: Overriding the prompt in place instead of editing.
-                await self.edit_page(embed=current_embed, components={"new_bind": {}, "publish": {}})
+                # Disabling components here in case self.finish() doesn't fire properly for some reason.
+                await self.edit_page(
+                    embed=current_embed,
+                    components={
+                        "new_bind": {"is_disabled": True},
+                        "publish": {"is_disabled": True},
+                        "delete_bind": {"is_disabled": True},
+                    },
+                )
 
                 yield await self.response.send(
                     "Your new binds have been saved to your server.", ephemeral=True
