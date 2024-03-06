@@ -568,7 +568,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
     ):
         """Handle ==, <=, and >= bind types from a single location."""
 
-        if fired_component_id != "modal_roleset":
+        if fired_component_id and fired_component_id not in ("modal_roleset", "new_role"):
             yield await self.response.defer()
 
         current_data = await self.current_data()
@@ -604,13 +604,18 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
         # TODO: Consider try/except all get_group calls.
         roblox_group = await get_group(group_id)
 
-        components = [PromptComponents.discord_role_selector(min_values=1, max_values=1)]
+        components = [
+            PromptComponents.discord_role_selector(min_values=1),
+            PromptComponents.create_role_button(),
+        ]
 
         # Only allow modal input if there's over 25 ranks.
         if len(roblox_group.rolesets) > 25:
             components.append(Button(label="Select a group rank", component_id="modal_roleset"))
         else:
-            components.append(PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1))
+            components.insert(
+                1, PromptComponents.group_rank_selector(roblox_group=roblox_group, max_values=1)
+            )
 
         yield PromptPageData(
             title=title,
@@ -619,47 +624,100 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             footer_text=f"Group: {current_data.get('group_name', group_id)}",
         )
 
-        discord_role = current_data["discord_role"]["values"][0] if current_data.get("discord_role") else None
-
-        if fired_component_id == "modal_roleset":
-            local_modal = await PromptComponents.roleset_selection_modal(
-                title=modal_title,
-                interaction=interaction,
-                prompt=self,
-                fired_component_id=fired_component_id,
-            )
-
-            yield await self.response.send_modal(local_modal)
-
-            if not await local_modal.submitted():
-                return
-
-            modal_data = await local_modal.get_data()
-            rank_id = parse_modal_rank_input(modal_data["rank_input"], roblox_group)
-
-            if rank_id == -1:
-                yield await self.response.send_first(
-                    "That ID does not match a group rank in your roblox group! Please try again.",
-                    ephemeral=True,
-                )
-                return
-
-            await self.save_stateful_data(group_rank={"values": [rank_id]})
-            # Force the saved rank_id into the memory instance of current_data.
-            current_data["group_rank"] = {"values": [rank_id]}
-
-            if not discord_role:
-                await self.response.send(
-                    f"The rank ID `{rank_id}` has been stored for this bind.", ephemeral=True
-                )
-            else:
-                await self.ack()
-
+        discord_role = current_data["discord_role"]["values"] if current_data.get("discord_role") else None
         group_rank = (
             current_data["group_rank"]["values"][0]
             if current_data.get("group_rank") and current_data["group_rank"]["values"]
             else None
         )
+
+        match fired_component_id:
+            case "new_role":
+                local_modal = await PromptComponents.new_role_modal(
+                    interaction=interaction,
+                    prompt=self,
+                    fired_component_id=fired_component_id,
+                )
+
+                # Disable the discord role select menu.
+                await self.edit_component(
+                    discord_role={
+                        "is_disabled": True,
+                    },
+                    new_role={"label": "Use an existing role", "component_id": "new_role-er"},
+                )
+
+                yield await self.response.send_modal(local_modal)
+
+                if not await local_modal.submitted():
+                    return
+
+                modal_data = await local_modal.get_data()
+                role_name = modal_data["role_name"]
+
+                # Update all instances of discord_role
+                await self.save_stateful_data(discord_role={"values": [role_name]})
+                current_data["discord_role"] = {"values": [role_name]}
+                discord_role = [role_name]
+
+                if not group_rank:
+                    await self.response.send(
+                        f"The Discord role name `{role_name}` has been stored for this bind.", ephemeral=True
+                    )
+                else:
+                    await self.ack()
+
+            case "new_role-er":
+                # Enable the discord role select menu
+                await self.edit_component(
+                    discord_role={
+                        "is_disabled": False,
+                    },
+                    new_role={"label": "Create new role", "component_id": "new_role"},
+                )
+
+                # Clear discord_role data.
+                if current_data.get("discord_role"):
+                    current_data.pop("discord_role")
+                discord_role = None
+                await self.clear_data("discord_role")
+
+                return
+
+            case "modal_roleset":
+                local_modal = await PromptComponents.roleset_selection_modal(
+                    title=modal_title,
+                    interaction=interaction,
+                    prompt=self,
+                    fired_component_id=fired_component_id,
+                )
+
+                yield await self.response.send_modal(local_modal)
+
+                if not await local_modal.submitted():
+                    return
+
+                modal_data = await local_modal.get_data()
+                rank_id = parse_modal_rank_input(modal_data["rank_input"], roblox_group)
+
+                if rank_id == -1:
+                    yield await self.response.send_first(
+                        "That ID does not match a group rank in your roblox group! Please try again.",
+                        ephemeral=True,
+                    )
+                    return
+
+                # Update all instances of group_rank
+                await self.save_stateful_data(group_rank={"values": [rank_id]})
+                current_data["group_rank"] = {"values": [rank_id]}
+                group_rank = rank_id
+
+                if not discord_role:
+                    await self.response.send(
+                        f"The rank ID `{rank_id}` has been stored for this bind.", ephemeral=True
+                    )
+                else:
+                    await self.ack()
 
         if discord_role and group_rank:
             existing_pending_binds: list[GuildBind] = [
@@ -676,17 +734,32 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
             else:
                 group_criteria = {"roleset": int(group_rank)}
 
-            existing_pending_binds.append(
-                GuildBind(
-                    roles=[discord_role],
-                    remove_roles=[],
-                    criteria={
-                        "type": "group",
-                        "id": group_id,
-                        "group": group_criteria,
-                    },
+            if not discord_role[0].isdigit():
+                existing_pending_binds.append(
+                    GuildBind(
+                        roles=[],
+                        remove_roles=[],
+                        pending_new_roles=[discord_role[0]],
+                        criteria={
+                            "type": "group",
+                            "id": group_id,
+                            "group": group_criteria,
+                        },
+                    )
                 )
-            )
+
+            else:
+                existing_pending_binds.append(
+                    GuildBind(
+                        roles=[*discord_role],
+                        remove_roles=[],
+                        criteria={
+                            "type": "group",
+                            "id": group_id,
+                            "group": group_criteria,
+                        },
+                    )
+                )
 
             await self.save_stateful_data(
                 pending_binds=[
