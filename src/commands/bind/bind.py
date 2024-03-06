@@ -26,7 +26,7 @@ from resources.response import Prompt, PromptCustomID, PromptPageData
 from resources.ui.components import Button, RoleSelectMenu, TextInput, TextSelectMenu
 
 
-class GenericBindPromptCustomID(PromptCustomID, ABC):
+class GenericBindPromptCustomID(PromptCustomID):
     """Custom ID for the GenericBindPrompt."""
 
     entity_id: int
@@ -1126,7 +1126,12 @@ class PromptComponents:
 
     @staticmethod
     def discord_role_selector(
-        *, placeholder="Choose a Discord role", min_values=0, max_values=25, component_id="discord_role"
+        *,
+        placeholder: str = "Choose a Discord role",
+        min_values: int = 0,
+        max_values: int = 25,
+        component_id: str = "discord_role",
+        disabled: bool = False,
     ) -> RoleSelectMenu:
         """Create a discord role selection component for a prompt."""
         return RoleSelectMenu(
@@ -1134,6 +1139,7 @@ class PromptComponents:
             min_values=min_values,
             max_values=max_values,
             component_id=component_id,
+            is_disabled=disabled,
         )
 
     @staticmethod
@@ -1184,7 +1190,7 @@ class PromptComponents:
             interaction=interaction,
             command_name=prompt.command_name,
             prompt_data=modal.ModalPromptArgs(
-                prompt_name=prompt.__class__.__name__,
+                prompt_name=prompt.prompt_name,
                 original_custom_id=prompt.custom_id,
                 page_number=prompt.current_page_number,
                 prompt_message_id=prompt.custom_id.prompt_message_id,
@@ -1215,7 +1221,7 @@ class PromptComponents:
             interaction=interaction,
             command_name=prompt.command_name,
             prompt_data=modal.ModalPromptArgs(
-                prompt_name=prompt.__class__.__name__,
+                prompt_name=prompt.prompt_name,
                 original_custom_id=prompt.custom_id,
                 page_number=prompt.current_page_number,
                 prompt_message_id=prompt.custom_id.prompt_message_id,
@@ -1263,6 +1269,48 @@ class PromptComponents:
                     value=str(index),
                 )
                 for index, bind in enumerate(pending_binds)
+            ],
+        )
+
+    @staticmethod
+    def create_role_button(
+        *, label: str = "Create a new role", component_id: str = "new_role", disabled: bool = False
+    ):
+        return Button(
+            label=label,
+            component_id=component_id,
+            is_disabled=disabled,
+        )
+
+    @staticmethod
+    async def new_role_modal(
+        *,
+        interaction: hikari.ComponentInteraction | hikari.CommandInteraction,
+        prompt: "Prompt",
+        fired_component_id: str,
+        title: str = None,
+    ) -> "modal.Modal":
+        """Send a modal to the user asking for some rank ID input."""
+        return await modal.build_modal(
+            title=title or "Create a discord role",
+            interaction=interaction,
+            command_name=prompt.command_name,
+            prompt_data=modal.ModalPromptArgs(
+                prompt_name=prompt.prompt_name,
+                original_custom_id=prompt.custom_id,
+                page_number=prompt.current_page_number,
+                prompt_message_id=prompt.custom_id.prompt_message_id,
+                component_id=fired_component_id,
+            ),
+            components=[
+                TextInput(
+                    label="New role name",
+                    style=TextInput.TextInputStyle.SHORT,
+                    placeholder="Type the name of the role to create on submission.",
+                    custom_id="role_name",
+                    required=True,
+                    max_length=100,
+                )
             ],
         )
 
