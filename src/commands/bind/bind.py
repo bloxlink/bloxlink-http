@@ -1296,7 +1296,7 @@ class PromptComponents:
         *,
         roblox_group: RobloxGroup = None,
         placeholder: str = "Choose a group rank",
-        min_values: int = 0,
+        min_values: int = 2,
         max_values: int = 2,
         component_id: str = "group_rank",
     ) -> TextSelectMenu:
