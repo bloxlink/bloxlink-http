@@ -1,15 +1,15 @@
 import hikari
-from bloxlink_lib import get_group, find
+from bloxlink_lib import find, get_group
 from bloxlink_lib.database import fetch_guild_data, update_guild_data
-from resources.bloxlink import instance as bloxlink
-from resources.binds import create_bind
-from resources.commands import CommandContext, GenericCommand
-from resources.response import Prompt, PromptPageData
-from resources.ui.components import Button, TextSelectMenu, TextInput
-from resources.ui.modals import build_modal
-from resources.exceptions import RobloxNotFound
-from resources.constants import BROWN_COLOR, DEFAULTS
 
+from resources.binds import create_bind
+from resources.bloxlink import instance as bloxlink
+from resources.commands import CommandContext, GenericCommand
+from resources.constants import BROWN_COLOR, DEFAULTS
+from resources.exceptions import RobloxNotFound
+from resources.response import Prompt, PromptPageData
+from resources.ui.components import Button, TextInput, TextSelectMenu
+from resources.ui.modals import build_modal
 
 SETUP_OPTIONS = {
     "nicknameTemplate": {
@@ -138,7 +138,7 @@ class SetupPrompt(Prompt):
                 select_nickname = (await self.current_data(key_name="preset_nickname_select")).get("values")[0]
 
                 if select_nickname == "custom":
-                    modal = build_modal(
+                    modal = await build_modal(
                         title="Add a Custom Nickname",
                         command_name=self.command_name,
                         interaction=interaction,
@@ -146,7 +146,8 @@ class SetupPrompt(Prompt):
                             "page_number": self.current_page_number,
                             "prompt_name": self.__class__.__name__,
                             "component_id": fired_component_id,
-                            "prompt_message_id": self.custom_id.prompt_message_id
+                            "prompt_message_id": self.custom_id.prompt_message_id,
+                            "original_custom_id": self.custom_id,
                         },
                         components=[
                             TextInput(
@@ -182,7 +183,7 @@ class SetupPrompt(Prompt):
                 )
 
             case "nickname_prefix_suffix":
-                modal = build_modal(
+                modal = await build_modal(
                     title="Add a Nickname Prefix and/or Suffix",
                     command_name=self.command_name,
                     interaction=interaction,
@@ -190,7 +191,8 @@ class SetupPrompt(Prompt):
                         "page_number": self.current_page_number,
                         "prompt_name": self.__class__.__name__,
                         "component_id": fired_component_id,
-                        "prompt_message_id": self.custom_id.prompt_message_id
+                        "prompt_message_id": self.custom_id.prompt_message_id,
+                        "original_custom_id": self.custom_id,
                     },
                     components=[
                         TextInput(
@@ -273,7 +275,7 @@ class SetupPrompt(Prompt):
 
         match fired_component_id:
             case "verified_role_change_name":
-                modal = build_modal(
+                modal = await build_modal(
                     title="Change Verified Role Name",
                     command_name=self.command_name,
                     interaction=interaction,
@@ -281,7 +283,8 @@ class SetupPrompt(Prompt):
                         "page_number": self.current_page_number,
                         "prompt_name": self.__class__.__name__,
                         "component_id": fired_component_id,
-                        "prompt_message_id": self.custom_id.prompt_message_id
+                        "prompt_message_id": self.custom_id.prompt_message_id,
+                        "original_custom_id": self.custom_id,
                     },
                     components=[
                         TextInput(
@@ -360,7 +363,7 @@ class SetupPrompt(Prompt):
 
         match fired_component_id:
             case "group_link":
-                modal = build_modal(
+                modal = await build_modal(
                     title="Link a Group",
                     command_name=self.command_name,
                     interaction=interaction,
@@ -368,7 +371,8 @@ class SetupPrompt(Prompt):
                         "page_number": self.current_page_number,
                         "prompt_name": self.__class__.__name__,
                         "component_id": fired_component_id,
-                        "prompt_message_id": self.custom_id.prompt_message_id
+                        "prompt_message_id": self.custom_id.prompt_message_id,
+                        "original_custom_id": self.custom_id,
                     },
                     components=[
                         TextInput(

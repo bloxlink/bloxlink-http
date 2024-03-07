@@ -4,7 +4,7 @@ from pydantic import Field
 import hikari
 from bloxlink_lib import BaseModelArbitraryTypes
 from bloxlink_lib.database import redis
-from resources.ui.components import TextInput, get_custom_id, CommandCustomID
+from resources.ui.components import TextInput, CommandCustomID, BaseCustomID
 from resources import response
 
 
@@ -18,6 +18,7 @@ class ModalPromptArgs(TypedDict):
     """Arguments for modals used in prompts"""
 
     prompt_name: str
+    original_custom_id: BaseCustomID
     user_id: int
     page_number: int
     prompt_message_id: int
@@ -33,7 +34,7 @@ class Modal(BaseModelArbitraryTypes):
     """Represents a Discord Modal."""
 
     builder: hikari.impl.InteractionModalBuilder | None
-    custom_id: str
+    custom_id: BaseCustomID
     data: dict | None = None
     command_options: dict | None = None
 
@@ -77,7 +78,7 @@ class Modal(BaseModelArbitraryTypes):
         self.data = None
 
 
-def build_modal(title: str, components: list[TextInput], *, interaction: hikari.ComponentInteraction | hikari.CommandInteraction, command_name: str, prompt_data: ModalPromptArgs = None, command_data: ModalCommandArgs = None) -> Modal:
+async def build_modal(title: str, components: list[TextInput], *, interaction: hikari.ComponentInteraction | hikari.CommandInteraction, command_name: str, prompt_data: ModalPromptArgs = None, command_data: ModalCommandArgs = None) -> Modal:
     """Build a modal response. This needs to be separately returned."""
 
     if prompt_data is None and command_data is None:
@@ -87,16 +88,15 @@ def build_modal(title: str, components: list[TextInput], *, interaction: hikari.
         raise ValueError("prompt_data and command_data cannot both be provided.")
 
     if command_data is not None:
-        new_custom_id = get_custom_id(
-            ModalCustomID,
+        new_custom_id = ModalCustomID(
             command_name=command_name,
             subcommand_name=command_data.get("subcommand_name") or "",
             user_id=interaction.user.id,
-            # TODO: is this needed? component_custom_id=command_data.get("component_id") or "",
         )
     elif prompt_data is not None:
-        new_custom_id = get_custom_id(
-            response.PromptCustomID,
+        custom_id_format: ModalCustomID = (await response.Prompt.find_prompt(prompt_data["original_custom_id"], interaction)).custom_id_format
+
+        new_custom_id = custom_id_format.from_str(interaction.custom_id).set_fields(
             command_name=command_name,
             subcommand_name="",
             prompt_name=prompt_data.get("prompt_name") or "",

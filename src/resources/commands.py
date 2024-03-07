@@ -10,7 +10,6 @@ import hikari
 import humanize
 from bloxlink_lib import BaseModelArbitraryTypes
 from bloxlink_lib.database import redis, fetch_guild_data, update_guild_data
-from resources.ui.components import parse_custom_id
 from resources.constants import DEVELOPERS
 from resources.exceptions import (
     BloxlinkForbidden, CancelCommand, PremiumRequired, UserNotVerified,
@@ -425,7 +424,7 @@ async def handle_modal(interaction: hikari.ModalInteraction, response: Response)
     try:
         custom_id = interaction.custom_id
         components = [c for a in interaction.components for c in a.components]
-        parsed_custom_id = parse_custom_id(ModalCustomID, custom_id)
+        parsed_custom_id = ModalCustomID.from_str(custom_id)
 
         modal_data = {modal_component.custom_id: modal_component.value for modal_component in components}
 
@@ -437,23 +436,16 @@ async def handle_modal(interaction: hikari.ModalInteraction, response: Response)
         for command in slash_commands.values():
             if parsed_custom_id.type == "prompt":
                 # cast it into a prompt custom id
-                prompt_custom_id = parse_custom_id(PromptCustomID, custom_id)
-                # find matching prompt handler
-                for command_prompt in command.prompts:
-                    if prompt_custom_id.prompt_name == command_prompt.__name__:
-                        new_prompt = await command_prompt.new_prompt(
-                            prompt_instance=command_prompt,
-                            interaction=interaction,
-                            response=response,
-                            command_name=command.name,
-                        )
+                prompt_custom_id = PromptCustomID.from_str(custom_id)
+                prompt = await Prompt.find_prompt(prompt_custom_id, interaction, response, command=command)
 
-                        async for generator_response in new_prompt.entry_point(interaction):
-                            if not isinstance(generator_response, PromptPageData):
-                                logging.debug("2 %s", generator_response)
-                                yield generator_response
+                if prompt:
+                    async for generator_response in prompt.entry_point(interaction):
+                        if not isinstance(generator_response, PromptPageData):
+                            logging.debug("1 %s", generator_response)
+                            yield generator_response
 
-                        break
+                    break
 
             elif parsed_custom_id.type == "command":
                 # find matching command handler
@@ -510,32 +502,22 @@ async def handle_component(interaction: hikari.ComponentInteraction, response: R
 
         # find matching prompt handler
         if command.prompts:
-            for command_prompt in command.prompts:
-                try:
-                    parsed_custom_id = parse_custom_id(PromptCustomID, custom_id)
-                except (TypeError, IndexError):
-                    # Keeps prompts from preventing normal components from firing on iteration.
-                    # Since we check for a valid handler
-                    continue
+            try:
+                prompt_custom_id = PromptCustomID.from_str(custom_id)
+            except (TypeError, IndexError):
+                # Keeps prompts from preventing normal components from firing on iteration.
+                # Since we check for a valid handler
+                continue
 
-                if (
-                    parsed_custom_id.command_name == command.name
-                    and parsed_custom_id.prompt_name in (command_prompt.override_prompt_name, command_prompt.__name__)
-                ):
-                    new_prompt = await command_prompt.new_prompt(
-                        prompt_instance=command_prompt,
-                        interaction=interaction,
-                        response=response,
-                        command_name=command.name,
-                    )
+            prompt = await Prompt.find_prompt(prompt_custom_id, interaction, response, command=command)
 
-                    async for generator_response in new_prompt.entry_point(interaction):
-                        if not isinstance(generator_response, PromptPageData):
-                            logging.debug("3 %s", generator_response)
-                            yield generator_response
+            if prompt:
+                async for generator_response in prompt.entry_point(interaction):
+                    if not isinstance(generator_response, PromptPageData):
+                        logging.debug("1 %s", generator_response)
+                        yield generator_response
 
-                    return
-
+                break
 
 def new_command(command: Callable, **command_args: Unpack[NewCommandArgs]):
     """Registers a command with Bloxlink.

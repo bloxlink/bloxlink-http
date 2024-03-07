@@ -4,7 +4,7 @@ from typing import Any, Sequence, Coroutine, Literal
 import hikari
 
 from resources.constants import UNICODE_LEFT, UNICODE_RIGHT
-from resources.ui.components import CommandCustomID, Component, Button, Separator, set_custom_id_field
+from resources.ui.components import CommandCustomID, Component, Button, Separator
 
 
 class PaginatorCustomID(CommandCustomID):
@@ -110,9 +110,7 @@ class Paginator[T: PaginatorCustomID]:
 
         components: list[Component] = [
             Button(
-                custom_id = set_custom_id_field(
-                    self.custom_id_format.__class__,
-                    str(self.custom_id_format),
+                custom_id = self.custom_id_format.set_fields(
                     page_number=self.page_number-1,
                     section="page"
                 ),
@@ -121,9 +119,7 @@ class Paginator[T: PaginatorCustomID]:
                 style=Button.ButtonStyle.SECONDARY
             ),
             Button(
-                custom_id = set_custom_id_field(
-                    self.custom_id_format.__class__,
-                    str(self.custom_id_format),
+                custom_id = self.custom_id_format.set_fields(
                     page_number=self.page_number+1,
                     section="page"
                 ),
@@ -136,9 +132,7 @@ class Paginator[T: PaginatorCustomID]:
         if self.include_cancel_button:
             components.append(
                 Button(
-                    custom_id = set_custom_id_field(
-                        self.custom_id_format.__class__,
-                        str(self.custom_id_format),
+                    custom_id = self.custom_id_format.set_fields(
                         section="cancel"
                     ),
                     label="Cancel",

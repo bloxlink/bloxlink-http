@@ -1,7 +1,7 @@
 import argparse
 import logging
-from os import environ as env
 from datetime import timedelta
+from os import environ as env
 
 import hikari
 import uvicorn
@@ -24,10 +24,9 @@ from resources.commands import handle_interaction, sync_commands
 from resources.constants import MODULES
 from web.webserver import webserver
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "-s", "--sync-commands",
+    "-s", "--sync-commands", 
     action="store_true",
     help="sync commands and bypass the cooldown",
     required=False,
@@ -36,6 +35,12 @@ parser.add_argument(
     "-c", "--clear-redis",
     action="store_true",
     help="local only, clears redis",
+    required=False,
+    default=False)
+parser.add_argument(
+    "-d", "--debug",
+    action="store_true",
+    help="enable debug logging format",
     required=False,
     default=False)
 args = parser.parse_args()
@@ -50,6 +55,9 @@ webserver.mount("/bot", bot)
 @webserver.on_start
 async def handle_start(_):
     """Start the bot and sync commands"""
+
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG, force=True, format="%(asctime)s:%(levelname)s:%(name)s:%(message)s")
 
     await bot.start()
 

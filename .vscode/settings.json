@@ -3,5 +3,9 @@
         "--disable=C0413",
         "--disable=C0114",
     ],
-    "pylint.cwd": "${workspaceFolder}/src"
+    "pylint.cwd": "${workspaceFolder}/src",
+    "[python]": {
+        "diffEditor.ignoreTrimWhitespace": false,
+        "editor.formatOnSave": true,
+    }
 }
