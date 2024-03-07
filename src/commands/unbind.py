@@ -11,7 +11,7 @@ from resources.pagination import Paginator, PaginatorCustomID
 from resources.ui.autocomplete import bind_category_autocomplete, bind_id_autocomplete
 from resources.ui.components import BaseCustomID, Component, TextSelectMenu, component_author_validation
 
-MAX_BINDS_PER_PAGE = 10
+MAX_BINDS_PER_PAGE = 5
 
 
 class UnbindCustomID(PaginatorCustomID):
@@ -113,9 +113,12 @@ async def component_generator(items: list[GuildBind], custom_id: UnbindCustomID)
     return [text_menu]
 
 
-@component_author_validation(parse_into=UnbindCustomID, defer=True, ephemeral=False)
+@component_author_validation(parse_into=UnbindCustomID, defer=False, ephemeral=False)
 async def unbind_pagination_button(ctx: CommandContext, custom_id: UnbindCustomID):
     """Handle the left and right buttons for pagination."""
+    # TODO: Support deferring via yield for paginator.
+    ctx.response.defer_through_rest = True
+    await ctx.response.defer()
 
     interaction = ctx.interaction
 
