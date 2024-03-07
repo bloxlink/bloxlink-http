@@ -63,6 +63,7 @@ def viewbinds_item_filter(items: list[GuildBind]):
 @component_author_validation(parse_into=ViewbindsCustomID, ephemeral=False, defer=False)
 async def viewbinds_button(ctx: CommandContext, custom_id: ViewbindsCustomID):
     """Handle pagination left and right button presses."""
+    # TODO: Support deferring via yield for paginator.
     ctx.response.defer_through_rest = True
     await ctx.response.defer()
 
