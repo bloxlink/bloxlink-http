@@ -10,7 +10,7 @@ from resources.pagination import Paginator, PaginatorCustomID
 from resources.ui.autocomplete import bind_category_autocomplete, bind_id_autocomplete
 from resources.ui.components import component_author_validation
 
-MAX_BINDS_PER_PAGE = 10
+MAX_BINDS_PER_PAGE = 5
 
 
 class ViewbindsCustomID(PaginatorCustomID):
@@ -60,9 +60,11 @@ def viewbinds_item_filter(items: list[GuildBind]):
     return sorted(items, key=lambda item: item.criteria.id)
 
 
-@component_author_validation(parse_into=ViewbindsCustomID, defer=True, ephemeral=False)
+@component_author_validation(parse_into=ViewbindsCustomID, ephemeral=False, defer=False)
 async def viewbinds_button(ctx: CommandContext, custom_id: ViewbindsCustomID):
     """Handle pagination left and right button presses."""
+    ctx.response.defer_through_rest = True
+    await ctx.response.defer()
 
     interaction = ctx.interaction
 
