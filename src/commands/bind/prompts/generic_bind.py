@@ -1,7 +1,7 @@
 import hikari
 from bloxlink_lib import GuildBind, build_binds_desc, create_entity
 
-from commands.bind.prompts.components import PromptComponents
+from commands.bind.components import PromptComponents
 from resources.binds import create_bind
 from resources.bloxlink import instance as bloxlink
 from resources.constants import GREEN_COLOR
