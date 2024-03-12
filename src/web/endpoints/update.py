@@ -1,11 +1,11 @@
-import logging
 import asyncio
+import logging
 
+import hikari
 from blacksheep import FromJSON, Request, ok, status_code
 from blacksheep.server.controllers import APIController, get, post
-import hikari
+from bloxlink_lib import BaseModel, MemberSerializable, RobloxDown, StatusCodes, get_user_account
 from bloxlink_lib.database import fetch_guild_data, redis
-from bloxlink_lib import get_user_account, BaseModel, MemberSerializable, RobloxDown, StatusCodes
 
 from resources import binds
 from resources.bloxlink import instance as bloxlink
@@ -180,7 +180,7 @@ class Update(APIController):
             try:
                 dm_channel = await bloxlink.rest.create_dm_channel(user_id)
                 await dm_channel.send(content=bot_response.content, embed=bot_response.embed, components=bot_response.action_rows)
-            except hikari.BadRequestError:
+            except (hikari.BadRequestError, hikari.ForbiddenError):
                 return status_code(StatusCodes.FORBIDDEN, {
                     "error": "Bloxlink can't DM this user."
                 })
