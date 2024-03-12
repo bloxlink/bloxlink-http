@@ -1,0 +1,38 @@
+# Partially inspired by https://github.com/Apakottur/action-poetry-package-update
+
+name: update-poetry-dependencies
+on: [push, workflow_dispatch]
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with: 
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: pip install poetry==1.7.1
+
+      - name: Install dependencies
+        run: poetry install --only main
+      
+      - name: Update dependencies
+        run: poetry update --only main 
+
+      - name: Check for changes
+        id: changes
+        run: echo "::set-output name=changed::$(git status --porcelain | wc -l)"
+        shell: bash
+
+      - name: Publish changes
+        if: steps.changes.outputs.changed > 0
+        uses: test-room-7/action-update-file@v1.8.0
+        with:
+          file-path: poetry.lock
+          commit-msg: Update poetry dependencies
+          github-token: ${{ secrets.GITHUB_TOKEN }}
