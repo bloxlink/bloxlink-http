@@ -23,7 +23,7 @@ jobs:
 
       - name: Check for changes
         id: changes
-        run: echo "::set-output name=changed::$(git status --porcelain | wc -l)"
+        run: echo "name=changed::$(git status --porcelain | wc -l)" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Publish changes
