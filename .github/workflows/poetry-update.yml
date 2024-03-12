@@ -17,9 +17,6 @@ jobs:
 
       - name: Install Poetry
         run: pip install poetry==1.7.1
-
-      - name: Install dependencies
-        run: poetry install --only main
       
       - name: Update dependencies
         run: poetry update --only main 
