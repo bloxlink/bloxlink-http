@@ -202,6 +202,9 @@ async def unbind_discard_binding(ctx: CommandContext, custom_id: UnbindCustomID)
 
     await delete_bind(guild_id, *bind_deletions)
 
+    # TODO: Can we just disable the components instead?
+    await bloxlink.rest.delete_message(interaction.channel_id, interaction.message)
+
     await response.send("Your chosen bindings have been removed.", ephemeral=True)
 
 
