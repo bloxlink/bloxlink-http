@@ -554,7 +554,7 @@ class SetupPrompt(Prompt):
                 if pending_db_changes:
                     await update_guild_data(self.guild_id, **pending_db_changes)
 
-                await self.edit_page(content="Successfully saved the configuration to your server.", embed=None, components=None)
+                await self.edit_page(content="Successfully saved the configuration to your server.", embed=None)
 
             case "setup_cancel":
                 yield await self.finish()
