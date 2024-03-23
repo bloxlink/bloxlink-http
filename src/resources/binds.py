@@ -1,32 +1,51 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import timedelta
 from typing import TYPE_CHECKING, Unpack
 
-from datetime import timedelta
 import hikari
-from bloxlink_lib import MemberSerializable, GuildSerializable, fetch_typed, StatusCodes, GuildBind, get_binds, BaseModel, create_entity, count_binds, VALID_BIND_TYPES, BindCriteriaDict, parse_template, SnowflakeSet
-from bloxlink_lib.database import fetch_user_data, update_user_data, update_guild_data, fetch_guild_data
+from bloxlink_lib import (
+    VALID_BIND_TYPES,
+    BaseModel,
+    BindCriteriaDict,
+    GuildBind,
+    GuildSerializable,
+    MemberSerializable,
+    SnowflakeSet,
+    StatusCodes,
+    count_binds,
+    create_entity,
+    fetch_typed,
+    get_binds,
+    parse_template,
+)
+from bloxlink_lib.database import fetch_guild_data, fetch_user_data, update_guild_data, update_user_data
 from pydantic import Field
 
+from config import CONFIG
 from resources import restriction
 from resources.api.roblox import users
 from resources.bloxlink import instance as bloxlink
 from resources.constants import LIMITS, ORANGE_COLOR
-from resources.exceptions import Message, RobloxNotFound, BindConflictError, BindException, PremiumRequired, BloxlinkForbidden
-from resources.ui.embeds import InteractiveMessage
+from resources.exceptions import (
+    BindConflictError,
+    BindException,
+    BloxlinkForbidden,
+    Message,
+    PremiumRequired,
+    RobloxNotFound,
+)
 from resources.premium import get_premium_status
 from resources.ui.components import Button, Component
-from config import CONFIG
+from resources.ui.embeds import InteractiveMessage
 
 if TYPE_CHECKING:
     from resources.response import Response
 
 
-
 # Set to True to remove the old bind fields from the database (groupIDs and roleBinds)
 POP_OLD_BINDS: bool = False
-
 
 
 class UpdateEndpointResponse(BaseModel):
@@ -37,190 +56,6 @@ class UpdateEndpointResponse(BaseModel):
     add_roles: list[int] = Field(alias="addRoles")
     remove_roles: list[int] = Field(alias="removeRoles")
     missing_roles: list[str] = Field(alias="missingRoles")
-
-
-def convert_v3_binds_to_v4(items: dict, bind_type: VALID_BIND_TYPES) -> list:
-    """Convert old bindings to the new bind format.
-
-    Args:
-        items (dict): The bindings to convert.
-        bind_type (ValidBindType): Type of bind that is being made.
-
-    Returns:
-        list: The binds in the new format.
-    """
-    output = []
-
-    for bind_id, data in items.items():
-        group_rank_binding = data.get("binds") or data.get("ranges")
-
-        if bind_type != "group" or not group_rank_binding:
-            bind_data = {
-                "roles": data.get("roles"),
-                "removeRoles": data.get("removeRoles"),
-                "nickname": data.get("nickname"),
-                "bind": {"type": bind_type, "id": int(bind_id)},
-            }
-            output.append(bind_data)
-            continue
-
-        # group rank bindings
-        if data.get("binds"):
-            for rank_id, sub_data in data["binds"].items():
-                bind_data = {}
-
-                bind_data["bind"] = {"type": bind_type, "id": int(bind_id)}
-                bind_data["roles"] = sub_data.get("roles")
-                bind_data["nickname"] = sub_data.get("nickname")
-                bind_data["removeRoles"] = sub_data.get("removeRoles")
-
-                # Convert to an int if possible beforehand.
-                try:
-                    rank_id = int(rank_id)
-                except ValueError:
-                    pass
-
-                if rank_id == "all":
-                    bind_data["bind"]["everyone"] = True
-                elif rank_id == 0:
-                    bind_data["bind"]["guest"] = True
-                elif rank_id < 0:
-                    bind_data["bind"]["min"] = abs(rank_id)
-                else:
-                    bind_data["bind"]["roleset"] = rank_id
-
-                output.append(bind_data)
-
-        # group rank ranges
-        if data.get("ranges"):
-            for range_item in data["ranges"]:
-                bind_data = {}
-
-                bind_data["bind"] = {"type": bind_type, "id": int(bind_id)}
-                bind_data["roles"] = range_item.get("roles")
-                bind_data["nickname"] = range_item.get("nickname")
-                bind_data["removeRoles"] = range_item.get("removeRoles")
-
-                bind_data["bind"]["min"] = int(range_item.get("low"))
-                bind_data["bind"]["max"] = int(range_item.get("high"))
-
-                output.append(bind_data)
-
-    return output
-
-
-async def convert_v4_binds_to_v3(items: list) -> dict:
-    """Convert binds of the new format to the old bind format.
-
-    This does not include the names of groups/other bind types.
-
-    GuildBind and GroupBind types are supported, along with the dict representation.
-
-    Args:
-        items (list): The list of new bindings to convert.
-
-    Returns:
-        dict: Bindings in their old format.
-    """
-    role_binds = {
-        "gamePasses": defaultdict(dict),
-        "assets": defaultdict(dict),
-        "badges": defaultdict(dict),
-        "groups": defaultdict(dict),
-    }
-    entire_groups = {}
-
-    for bind in items:
-        if isinstance(bind, GuildBind):
-            bind = asdict(bind)
-
-        sub_data = bind["bind"]
-        bind_type = sub_data["type"]
-        bind_id = str(sub_data["id"])
-
-        bind_entity = create_entity(bind_type, bind_id)
-        try:
-            await bind_entity.sync()
-        except RobloxNotFound:
-            pass
-
-        if bind_type in ("asset", "badge", "gamepass"):
-            if bind_type == "gamepass":
-                bind_type = "gamePasses"
-            else:
-                bind_type += "s"
-
-            role_binds[bind_type][bind_id] = {
-                "displayName": bind_entity.name,
-                "roles": bind.get("roles", []),
-                "removeRoles": bind.get("removeRoles", []),
-                "nickname": bind.get("nickname"),
-            }
-
-        elif bind_type == "group":
-            # No specific roles to give = entire group bind
-            if not bind["roles"]:
-                entire_groups[bind_id] = {
-                    "groupName": bind_entity.name,
-                    "removeRoles": bind.get("removeRoles"),
-                    "nickname": bind.get("nickname"),
-                }
-
-                continue
-
-            roleset = sub_data.get("roleset")
-            min_rank = sub_data.get("min")
-            max_rank = sub_data.get("max")
-            guest = sub_data.get("guest")
-            everyone = sub_data.get("everyone")
-
-            group_data: dict = role_binds["groups"][bind_id]
-            if not group_data.get("groupName"):
-                group_data["groupName"] = bind_entity.name
-
-            rank_bindings: dict = group_data.get("binds", {})
-            range_bindings: list = group_data.get("ranges", [])
-
-            if roleset is not None:
-                rank_bindings[str(roleset)] = {
-                    "roles": bind.get("roles", []),
-                    "nickname": bind.get("nickname"),
-                    "removeRoles": bind.get("removeRoles", []),
-                }
-            elif everyone:
-                rank_bindings["all"] = {
-                    "roles": bind.get("roles", []),
-                    "nickname": bind.get("nickname"),
-                    "removeRoles": bind.get("removeRoles", []),
-                }
-            elif guest:
-                rank_bindings["0"] = {
-                    "roles": bind.get("roles", []),
-                    "nickname": bind.get("nickname"),
-                    "removeRoles": bind.get("removeRoles", []),
-                }
-            elif (min_rank and max_rank) or (max_rank):
-                min_rank = min_rank or 1
-                range_bindings.append(
-                    {
-                        "roles": bind.get("roles", []),
-                        "nickname": bind.get("nickname"),
-                        "removeRoles": bind.get("removeRoles", []),
-                        "low": min_rank,
-                        "high": max_rank,
-                    }
-                )
-            elif min_rank:
-                rank_bindings[str(-abs(min_rank))] = {
-                    "roles": bind.get("roles", []),
-                    "nickname": bind.get("nickname"),
-                    "removeRoles": bind.get("removeRoles", []),
-                }
-
-            group_data["binds"] = rank_bindings
-            group_data["ranges"] = range_bindings
-
-    return {"roleBinds": role_binds, "groupIDs": entire_groups}
 
 
 async def create_bind(
@@ -286,7 +121,7 @@ async def create_bind(
             "type": bind_type,
             "id": bind_id,
             **criteria_data,
-        }
+        },
     )
 
     # Check to see if there is a binding in place matching the given input
@@ -299,7 +134,9 @@ async def create_bind(
     if not existing_binds:
         guild_binds.append(new_bind)
 
-        await update_guild_data(guild_id, binds=[b.model_dump(exclude_unset=True, by_alias=True) for b in guild_binds])
+        await update_guild_data(
+            guild_id, binds=[b.model_dump(exclude_unset=True, by_alias=True) for b in guild_binds]
+        )
 
         return
 
@@ -331,7 +168,9 @@ async def create_bind(
             existing_binds[0].remove_roles = remove_roles
             guild_binds.append(existing_binds[0])
 
-        await update_guild_data(guild_id, binds=[b.model_dump(exclude_unset=True, by_alias=True) for b in guild_binds])
+        await update_guild_data(
+            guild_id, binds=[b.model_dump(exclude_unset=True, by_alias=True) for b in guild_binds]
+        )
 
     else:
         # everything else (verified/unverified binds)
@@ -359,10 +198,16 @@ async def delete_bind(
     for bind in binds:
         guild_binds.remove(bind)
 
-    await update_guild_data(guild_id, binds=[b.model_dump(exclude_unset=True, by_alias=True) for b in guild_binds])
+    await update_guild_data(
+        guild_id, binds=[b.model_dump(exclude_unset=True, by_alias=True) for b in guild_binds]
+    )
 
 
-async def calculate_bound_roles(guild: hikari.RESTGuild, member: hikari.Member | MemberSerializable, roblox_user: users.RobloxAccount = None) -> UpdateEndpointResponse:
+async def calculate_bound_roles(
+    guild: hikari.RESTGuild,
+    member: hikari.Member | MemberSerializable,
+    roblox_user: users.RobloxAccount = None,
+) -> UpdateEndpointResponse:
     # Get user roles + nickname
     update_data, update_data_response = await fetch_typed(
         UpdateEndpointResponse,
@@ -388,9 +233,9 @@ async def apply_binds(
     guild_id: hikari.Snowflake,
     roblox_account: users.RobloxAccount = None,
     *,
-    moderate_user: bool=False,
-    update_embed_for_unverified: bool=False,
-    mention_roles: bool = True
+    moderate_user: bool = False,
+    update_embed_for_unverified: bool = False,
+    mention_roles: bool = True,
 ) -> InteractiveMessage:
     """Apply bindings to a user, (apply the Verified & Unverified roles, nickname template, and custom bindings).
 
@@ -418,9 +263,7 @@ async def apply_binds(
     """
 
     if member.is_bot:
-        return InteractiveMessage(embed_description=(
-            "Sorry, bots cannot be updated."
-        ))
+        return InteractiveMessage(embed_description=("Sorry, bots cannot be updated."))
 
     if roblox_account and roblox_account.groups is None:
         await roblox_account.sync(["groups"])
@@ -466,21 +309,20 @@ async def apply_binds(
 
         # User won't see the response. Stop early. Bot tries to DM them before they are removed.
         if removed_user:
-            return InteractiveMessage(embed_description=(
-                "Member was removed from this server as per this server's settings.\n"
-                "> *Admins, confused? Check the Discord audit log for the reason why this user was removed from the server.*"
-            ))
+            return InteractiveMessage(
+                embed_description=(
+                    "Member was removed from this server as per this server's settings.\n"
+                    "> *Admins, confused? Check the Discord audit log for the reason why this user was removed from the server.*"
+                )
+            )
 
-        return InteractiveMessage(embed_description=(
-            "Sorry, you are restricted from verifying in this server. Server admins: please run `/restriction view` to learn why."
-        ))
+        return InteractiveMessage(
+            embed_description=(
+                "Sorry, you are restricted from verifying in this server. Server admins: please run `/restriction view` to learn why."
+            )
+        )
 
-
-    update_payload = await calculate_bound_roles(
-        guild=guild,
-        member=member,
-        roblox_user=roblox_account
-    )
+    update_payload = await calculate_bound_roles(guild=guild, member=member, roblox_user=roblox_account)
 
     add_roles.update(update_payload.add_roles)
     remove_roles.update(update_payload.remove_roles)
@@ -493,30 +335,27 @@ async def apply_binds(
                     guild_id, name=role_name, reason="Creating missing role"
                 )
                 add_roles.add(new_role.id)
-                guild_roles[new_role.id] = new_role # so str_reference can be updated
+                guild_roles[new_role.id] = new_role  # so str_reference can be updated
 
             except hikari.ForbiddenError:
-                return InteractiveMessage(embed_description=(
-                    "I don't have permission to create roles on this server."
-                ))
+                return InteractiveMessage(
+                    embed_description=("I don't have permission to create roles on this server.")
+                )
 
     # Apply roles and nickname to the user
     # We do roles and nickname separately so if the nickname fails, the roles still apply.
     # (It would take more HTTP requests to fetch the top roles of both the user and the bot)
     if add_roles or remove_roles:
         try:
-            await bloxlink.edit_user(member=member,
-                                    guild_id=guild_id,
-                                    add_roles=add_roles,
-                                    remove_roles=remove_roles)
+            await bloxlink.edit_user(
+                member=member, guild_id=guild_id, add_roles=add_roles, remove_roles=remove_roles
+            )
         except hikari.ForbiddenError:
             raise BloxlinkForbidden("I don't have permission to add roles to this user.") from None
 
     if nickname and guild.owner_id != member.id:
         try:
-            await bloxlink.edit_user(member=member,
-                                    guild_id=guild_id,
-                                    nickname=nickname)
+            await bloxlink.edit_user(member=member, guild_id=guild_id, nickname=nickname)
         except hikari.ForbiddenError:
             warnings.append("I don't have permission to change this user's nickname.")
 
@@ -570,20 +409,27 @@ async def apply_binds(
         ]
 
     return InteractiveMessage(
-        content="To verify with Bloxlink, click the link below." if not roblox_account else await parse_template(
+        content="To verify with Bloxlink, click the link below."
+        if not roblox_account
+        else await parse_template(
             guild_id=guild_id,
             guild_name=guild.name,
             member=member,
             roblox_user=roblox_account,
             template=guild_data.verifiedDM,
-            max_length=False
+            max_length=False,
         ),
         embed=embed,
         action_rows=components,
     )
 
 
-async def confirm_account(member: hikari.Member, guild_id: hikari.Snowflake, response: Response, roblox_account: users.RobloxAccount | None):
+async def confirm_account(
+    member: hikari.Member,
+    guild_id: hikari.Snowflake,
+    response: Response,
+    roblox_account: users.RobloxAccount | None,
+):
     """Send a request for the user to confirm their account"""
 
     if CONFIG.BOT_RELEASE in ("LOCAL", "CANARY"):
@@ -603,23 +449,22 @@ async def confirm_account(member: hikari.Member, guild_id: hikari.Snowflake, res
             embed = hikari.Embed(
                 title="Select Account",
                 description="Please click the link below to select an account for this server.",
-                color=ORANGE_COLOR
+                color=ORANGE_COLOR,
             )
 
             message = await response.send(
                 embed=embed,
                 components=[
-                    Button(
-                        label="Select Account",
-                        url=f"https://blox.link/confirm/v2/{guild_id}"
-                    ),
+                    Button(label="Select Account", url=f"https://blox.link/confirm/v2/{guild_id}"),
                 ],
                 ephemeral=True,
-                fetch_message=True
+                fetch_message=True,
             )
 
             try:
-                await bloxlink.relay(f"account_confirm:{guild_id}:{roblox_account.id}", None, timedelta(minutes=2).seconds)
+                await bloxlink.relay(
+                    f"account_confirm:{guild_id}:{roblox_account.id}", None, timedelta(minutes=2).seconds
+                )
             except (TimeoutError, RuntimeError):
                 pass
 
@@ -627,6 +472,7 @@ async def confirm_account(member: hikari.Member, guild_id: hikari.Snowflake, res
                 await message.delete()
             except (hikari.ForbiddenError, hikari.NotFoundError):
                 pass
+
 
 async def generate_binds_embed(items: list[GuildBind], embed: hikari.Embed):
     """Syncs the entities of the given binds and adds them to the embed."""
