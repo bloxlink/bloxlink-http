@@ -26,7 +26,7 @@ from web.webserver import webserver
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "-s", "--sync-commands", 
+    "-s", "--sync-commands",
     action="store_true",
     help="sync commands and bypass the cooldown",
     required=False,
@@ -90,6 +90,6 @@ if __name__ == "__main__":
     uvicorn.run(
         webserver,
         host=env.get("HOST", CONFIG.HOST),
-        port=env.get("PORT", CONFIG.PORT),
+        port=int(env.get("PORT", CONFIG.PORT)),
         log_config=None,
     )
