@@ -3,7 +3,7 @@
 name: update-poetry-dependencies
 on: [push, workflow_dispatch]
 jobs:
-  setup:
+  check_for_updates:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -19,11 +19,11 @@ jobs:
         run: pip install poetry==1.7.1
       
       - name: Update dependencies
-        run: poetry update --only main 
+        run: poetry update --only main --lock
 
       - name: Check for changes
         id: changes
-        run: echo "name=changed::$(git status --porcelain | wc -l)" >> $GITHUB_OUTPUT
+        run: echo "changed=$(git status --porcelain | wc -l)" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Publish changes
