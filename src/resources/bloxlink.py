@@ -201,25 +201,6 @@ class Bloxlink(yuyo.AsgiBot):
             ]
         )
 
-    async def reverse_lookup(self, roblox_id: int, origin_id: int | None = None) -> list[str]:
-        """Find Discord IDs linked to a roblox id.
-
-        Args:
-            roblox_id (int): The roblox user ID that will be matched against.
-            origin_id (int | None, optional): Discord user ID that will not be included in the output.
-                Defaults to None.
-
-        Returns:
-            list[str]: All the discord IDs linked to this roblox_id.
-        """
-
-        cursor = self.mongo.bloxlink["users"].find(
-            {"$or": [{"robloxID": str(roblox_id)}, {"robloxAccounts.accounts": str(roblox_id)}]},
-            {"_id": 1},
-        )
-
-        return [x["_id"] async for x in cursor if str(origin_id) != str(x["_id"])]
-
     @staticmethod
     def command(**command_attrs: "Unpack[NewCommandArgs]"):
         """Decorator to register a command."""

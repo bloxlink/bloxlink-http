@@ -1,9 +1,9 @@
 import hikari
 from hikari.commands import CommandOption, OptionType
 
-from bloxlink_lib import RobloxUser
+from bloxlink_lib import RobloxUser, reverse_lookup
 from resources.api.roblox import users
-from resources.ui.autocomplete import roblox_lookup_autocomplete
+from resources.ui.autocomplete import roblox_user_lookup_autocomplete
 from resources.bloxlink import instance as bloxlink
 from resources.commands import CommandContext, GenericCommand
 from resources.exceptions import RobloxNotFound
@@ -23,7 +23,7 @@ from resources.exceptions import RobloxNotFound
         ),
     ],
     autocomplete_handlers={
-        "user": roblox_lookup_autocomplete,
+        "user": roblox_user_lookup_autocomplete,
     },
 )
 class ReverseSearchCommand(GenericCommand):
@@ -35,7 +35,7 @@ class ReverseSearchCommand(GenericCommand):
 
         results: list[str] = []
         account: RobloxUser = None
-        discord_ids: list[str] = []
+        discord_ids: list[int] = []
 
         if target == "no_user":
             raise RobloxNotFound("The Roblox user you were searching for does not exist.")
@@ -45,7 +45,7 @@ class ReverseSearchCommand(GenericCommand):
         if not account:
             raise RobloxNotFound("The Roblox user you were searching for does not exist.")
 
-        discord_ids = await bloxlink.reverse_lookup(account.id)
+        discord_ids = await reverse_lookup(account.id)
 
         for discord_id in discord_ids:
             user = await bloxlink.fetch_discord_member(guild, discord_id, "id")
