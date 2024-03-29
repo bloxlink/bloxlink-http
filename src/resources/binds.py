@@ -280,14 +280,17 @@ async def apply_binds(
     remove_roles = SnowflakeSet(type="role", str_reference=guild_roles if not mention_roles else None)
     nickname: str = None
 
+    removed_user = False
+
     # Check restrictions
-    restriction_check = restriction.Restriction(member=member, guild_id=guild_id, roblox_user=roblox_account)
+    restriction_check = restriction.Restriction(
+        member=member,
+        guild_id=guild_id,
+        roblox_user=roblox_account,
+        guild_name=guild.name,
+    )
     await restriction_check.sync()
 
-    # restriction_obj: restriction.Restriction = restriction_info["restriction"]
-    # warnings.extend(restriction_info["warnings"])
-
-    removed_user = False
     if restriction_check.restricted:
         # Don't tell the user which account they're evading with.
         if restriction_check.source == "banEvader":
@@ -311,7 +314,7 @@ async def apply_binds(
         if removed_user:
             return InteractiveMessage(
                 embed_description=(
-                    "Member was removed from this server as per this server's settings.\n"
+                    "User was removed from this server as per this server's settings.\n"
                     "> *Admins, confused? Check the Discord audit log for the reason why this user was removed from the server.*"
                 )
             )

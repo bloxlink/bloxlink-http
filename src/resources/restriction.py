@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Annotated
 
 import hikari
 from pydantic import Field
@@ -6,6 +6,10 @@ from bloxlink_lib import MemberSerializable, fetch_typed, StatusCodes, get_user,
 
 from resources.bloxlink import instance as bloxlink
 from resources.exceptions import Message, UserNotVerified
+from resources.constants import RED_COLOR, SERVER_INVITE
+from resources.response import Response
+from resources.ui.components import Component, Button
+from resources.api.roblox.users import get_verification_link
 from config import CONFIG
 
 
@@ -22,19 +26,19 @@ class Restriction(BaseModelArbitraryTypes):
     """Representation of how a restriction applies to a user, if at all."""
 
     guild_id: int
+    member: hikari.Member | MemberSerializable
+    roblox_user: RobloxUser | None
+    guild_name: str = None
 
     restricted: bool = False
     reason: str = None
     action: Literal["kick", "ban", "dm", None] = None
     source: Literal["ageLimit", "groupLock", "disallowAlts", "banEvader", None] = None
-    warnings: list[str] = Field(default_factory=list)
+    warnings: list[Annotated[str, Field(default_factory=list)]] = None
     unevaluated: list[Literal["disallowAlts", "disallowBanEvaders"]] = Field(default_factory=list)
 
     alts: list[int] = Field(default_factory=list)
     banned_discord_id: int = None
-
-    member: hikari.Member | MemberSerializable = None
-    roblox_user: RobloxUser | None = None
 
     _synced: bool = False
 
@@ -53,7 +57,7 @@ class Restriction(BaseModelArbitraryTypes):
 
         restriction_data, restriction_response = await fetch_typed(
             RestrictionResponse,
-            f"{CONFIG.BIND_API}/restrictions/evaluate/{self.guild_id}/{self.member.id}",
+            f"{CONFIG.BIND_API}/restrictions/evaluate/{self.guild_id}",
             headers={"Authorization": CONFIG.BIND_API_AUTH},
             method="POST",
             body={
@@ -103,31 +107,34 @@ class Restriction(BaseModelArbitraryTypes):
     async def check_ban_evading(self):
         """Check if the user is evading a ban in this server."""
 
-        matches = []
-        roblox_accounts = await get_accounts(self.member.id)
+        matches: list[int] = []
+        roblox_accounts = await get_accounts(self.member)
 
         for account in roblox_accounts:
-            matches.append(await reverse_lookup(account, self.member.id))
+            matches.extend(await reverse_lookup(account, self.member.id))
 
-        for user in matches:
+        for user_id in matches:
             try:
-                await bloxlink.rest.fetch_ban(self.guild_id, user)
-            except (hikari.NotFoundError, hikari.ForbiddenError):
+                await bloxlink.rest.fetch_ban(self.guild_id, user_id)
+            except hikari.NotFoundError:
                 continue
+            except hikari.ForbiddenError:
+                self.warnings.append("I don't have permission to check the server bans.")
+                break
             else:
-                self.banned_discord_id = int(user.id)
+                self.banned_discord_id = user_id
                 self.restricted = True
                 self.source = "banEvader"
-                self.reason = f"User is evading a ban on user {user.id}."
-                self.action = "ban" # FIXME
+                self.reason = f"User is evading a ban on user {user_id}."
+                self.action = "ban" # TODO: let admins pick
                 break
 
     async def moderate(self):
         """Kick or Ban a user based on the determined restriction."""
 
-        # Only DM users if they're being removed; reason will show in main guild otherwise.
-        # if self.action in ("kick", "ban"):
-        #     await self.dm_user()
+        # Only DM users if they're being removed; reason will show in main guild regardless.
+        if self.action in ("kick", "ban", "dm"):
+            await self.dm_user()
 
         reason = (
             f"({self.source}): {self.reason[:450]}"  # pylint: disable=unsubscriptable-object
@@ -151,47 +158,51 @@ class Restriction(BaseModelArbitraryTypes):
                 await bloxlink.rest.ban_user(self.guild_id, user_id, reason=reason)
 
     async def dm_user(self):
-        # components = []
+        """DM a user about their restriction."""
 
-        # embed = hikari.Embed()
-        # embed.title = "User Restricted"
-        # embed.color = RED_COLOR
+        components: list[Component] = []
 
-        # reason_suffix = ""
-        # match self.source:
-        #     # fmt:off
-        #     case "ageLimit":
-        #         reason_suffix = "this server requires users to have a Roblox account older than a certain age"
-        #     case "groupLock":
-        #         reason_suffix = "this server requires users to be in, or have a specific rank in, a Roblox group"
-        #     case "banEvader":
-        #         reason_suffix = "this server does not allow ban evasion"
-        #     # fmt:on
+        embed = hikari.Embed()
+        embed.title = "User Restricted"
+        embed.color = RED_COLOR
 
-        # embed.description = f"You could not verify in **{guild.name}** because {reason_suffix}."
+        reason_suffix = ""
 
-        # if self.source not in {"banEvader", "disallowAlts"}:
-        #     embed.add_field(name="Reason", value=self.reason)
-        #     embed.description += (
-        #         "\n\n> *Think this is in error? Try using the buttons below to switch your account, "
-        #         "or join our guild and use `/verify` there.*"
-        #     )
+        verification_url = await get_verification_link(self.member.id, self.guild_id)
 
-        #     verification_url = await users.get_verification_link(user_id, guild.id)
+        match self.source:
+            # fmt:off
+            case "ageLimit":
+                reason_suffix = "this server requires users to have a Roblox account created after a certain date"
+            case "groupLock":
+                reason_suffix = "this server requires users to be in, or have a specific rank in, a Roblox group"
+            case "banEvader":
+                reason_suffix = "this server does not allow ban evasion"
+            # fmt:on
 
-        #     button_row = bloxlink.rest.build_message_action_row()
-        #     button_row.add_link_button(verification_url, label="Verify with Bloxlink")
-        #     button_row.add_link_button(SERVER_INVITE, label="Join Bloxlink HQ")
+        embed.description = (f"You could not verify in **{self.guild_name or 'the server'}** because {reason_suffix}."
+                             "\n\n> *Think this is in error? Try using the buttons below to switch your account, "
+                             f"or join our [support server](<{SERVER_INVITE}>) and use `/verify` there.*"
+                            )
 
-        #     components.append(button_row)
+        components.extend([
+            Button(
+                style=Button.ButtonStyle.LINK,
+                label="Verify with Bloxlink",
+                url=verification_url,
+            ),
+            Button(
+                style=Button.ButtonStyle.LINK,
+                label="Join Bloxlink HQ",
+                url=SERVER_INVITE,
+            ),
+        ])
 
-        # try:
-        #     # Only DM if the user is being kicked or banned. Reason is shown to user in guild otherwise.
-        #     if self.action != "dm":
-        #         channel = await bloxlink.rest.create_dm_channel(user_id)
-        #         await channel.send(embed=embed, components=components)
+        try:
+            # Only DM if the user is being kicked or banned. Reason is shown to user in guild otherwise.
+            if self.action:
+                channel = await bloxlink.rest.create_dm_channel(self.member.id)
+                await (Response(interaction=None).send(channel=channel, embed=embed, components=components))
 
-        # except (hikari.BadRequestError, hikari.ForbiddenError, hikari.NotFoundError) as e:
-        #     logging.warning(e)
-
-        raise NotImplementedError() # TODO
+        except (hikari.BadRequestError, hikari.ForbiddenError, hikari.NotFoundError):
+            pass

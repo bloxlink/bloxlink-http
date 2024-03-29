@@ -82,10 +82,10 @@ class Response:
     """
 
     def __init__(
-        self, interaction: hikari.CommandInteraction | hikari.ComponentInteraction | hikari.ModalInteraction
+        self, interaction: hikari.CommandInteraction | hikari.ComponentInteraction | hikari.ModalInteraction | None
     ):
-        self.interaction = interaction
-        self.user_id = interaction.user.id
+        self.interaction = interaction # None if this is being sent to a DM only
+        self.user_id = interaction.user.id if interaction else None
         self.responded = False
         self.deferred = False
         self.defer_through_rest = False

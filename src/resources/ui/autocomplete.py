@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from bloxlink_lib import BaseModel, RobloxUser, get_binds
+from bloxlink_lib import BaseModel, RobloxUser, RobloxGroup, get_binds, get_group
 
 from resources.api.roblox import users
 from resources.exceptions import RobloxAPIError, RobloxNotFound
@@ -65,8 +65,8 @@ async def bind_id_autocomplete(ctx: "CommandContext"):
     return ctx.response.send_autocomplete(choices)
 
 
-async def roblox_lookup_autocomplete(ctx: "CommandContext"):
-    """Return a matching roblox user from a user's input."""
+async def roblox_user_lookup_autocomplete(ctx: "CommandContext"):
+    """Return a matching Roblox user from the user's input."""
 
     interaction = ctx.interaction
     option = next(
