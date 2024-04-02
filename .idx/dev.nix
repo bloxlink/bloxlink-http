@@ -9,6 +9,7 @@
   packages = [ 
     pkgs.python312 
     pkgs.gcc 
+    pkgs.openssh
   ];
   idx = {
     # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
@@ -20,7 +21,7 @@
           "python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt";
       };
       onStart = {
-        run ="./start.sh";
+        run = "./start.sh";
       };
     };
   };
