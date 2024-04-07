@@ -57,8 +57,8 @@ class Restriction(BaseModelArbitraryTypes):
 
         restriction_data, restriction_response = await fetch_typed(
             RestrictionResponse,
-            f"{CONFIG.BIND_API}/restrictions/evaluate/{self.guild_id}",
-            headers={"Authorization": CONFIG.BIND_API_AUTH},
+            f"{CONFIG.BOT_API}/restrictions/evaluate/{self.guild_id}",
+            headers={"Authorization": CONFIG.BOT_API_AUTH},
             method="POST",
             body={
                 "member": MemberSerializable.from_hikari(self.member).model_dump(),

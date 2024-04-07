@@ -211,9 +211,9 @@ async def calculate_bound_roles(
     # Get user roles + nickname
     update_data, update_data_response = await fetch_typed(
         UpdateEndpointResponse,
-        f"{CONFIG.BIND_API}/binds/{guild.id}/{member.id}",
+        f"{CONFIG.BOT_API}/binds/{guild.id}/{member.id}",
         method="POST",
-        headers={"Authorization": CONFIG.BIND_API_AUTH},
+        headers={"Authorization": CONFIG.BOT_API},
         body={
             "guild_roles": GuildSerializable.from_hikari(guild).model_dump(by_alias=True)["roles"],
             "guild_name": guild.name,

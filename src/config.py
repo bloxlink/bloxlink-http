@@ -15,14 +15,12 @@ class Config(BLOXLINK_CONFIG):
     DISCORD_PUBLIC_KEY: str
     BOT_RELEASE: Literal["LOCAL", "CANARY", "MAIN", "PRO"] = "LOCAL"
     #############################
-    BIND_API_AUTH: str
-    BIND_API: str
+    BOT_API: str
+    BOT_API_AUTH: str
     #############################
     HOST: str
     PORT: int = Field(default=8010)
     HTTP_BOT_AUTH: str
-    #############################
-    ROBLOX_INFO_SERVER: str
 
 
 CONFIG: Config = Config(
