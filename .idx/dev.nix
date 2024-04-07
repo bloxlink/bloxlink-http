@@ -1,5 +1,3 @@
-
-
 # To learn more about how to use Nix to configure your environment
 # see: https://developers.google.com/idx/guides/customize-idx-env
 { pkgs, ... }: {
@@ -13,7 +11,11 @@
   ];
   idx = {
     # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
-    extensions = [ "ms-python.python" ];
+    extensions = [ 
+      "ms-python.python" 
+      "ms-python.pylint"
+      "humao.rest-client"
+    ];
     workspace = {
       # Runs when a workspace is first created with this `dev.nix` file
       onCreate = {
@@ -21,6 +23,7 @@
           "python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt";
       };
       onStart = {
+        update = "python3.12 -m venv .venv && source .venv/bin/activate && pip install -U -r requirements.txt";
         run = "./start.sh";
       };
     };
