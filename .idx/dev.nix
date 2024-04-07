@@ -8,6 +8,7 @@
     pkgs.python312 
     pkgs.gcc 
     pkgs.openssh
+    pkgs.poetry
   ];
   idx = {
     # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
@@ -23,7 +24,7 @@
           "python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt";
       };
       onStart = {
-        update = "python3.12 -m venv .venv && source .venv/bin/activate && pip install -U -r requirements.txt";
+        update = "poetry update; poetry export --without-hashes --format=requirements.txt > requirements.txt; python3.12 -m venv .venv && source .venv/bin/activate && pip install -U -r requirements.txt";
         run = "./start.sh";
       };
     };
