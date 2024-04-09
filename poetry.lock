@@ -800,7 +800,7 @@ speedups = ["aiohttp[speedups] (>=3.9,<4.0)", "ciso8601 (>=2.3,<3.0)", "orjson (
 type = "git"
 url = "https://github.com/hikari-py/hikari.git"
 reference = "refs/pull/1803/merge"
-resolved_reference = "5e1bad3b68611a017cd66463bc0a9a089a735203"
+resolved_reference = "0cc2063c05e9a22fab57513e077858aa15919361"
 
 [[package]]
 name = "hikari-yuyo"
