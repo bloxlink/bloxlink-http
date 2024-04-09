@@ -359,8 +359,10 @@ class Response:
 
         return modal.builder
 
-    def send_autocomplete(self, items: list["AutocompleteOption"]):
+    def send_autocomplete(self, items: list["AutocompleteOption"] = None):
         """Send an autocomplete response to Discord. Limited to 25 items."""
+
+        items = items or []
 
         return self.interaction.build_response(
             [hikari.impl.AutocompleteChoiceBuilder(c.name.title(), c.value) for c in items[:25]]

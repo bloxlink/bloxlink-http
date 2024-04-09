@@ -3,12 +3,13 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Callable, Type, TypedDict, Unpack, Awaitable, TYPE_CHECKING
+from typing import Callable, Type, TypedDict, Unpack, Awaitable, Annotated, TYPE_CHECKING
 from abc import ABC, abstractmethod
 from datetime import timedelta
 import hikari
 import humanize
-from bloxlink_lib import BaseModelArbitraryTypes
+from pydantic import Field
+from bloxlink_lib import BaseModelArbitraryTypes, find
 from bloxlink_lib.database import redis, fetch_guild_data, update_guild_data
 from resources.constants import DEVELOPERS
 from resources.exceptions import (
@@ -36,14 +37,14 @@ class Command(BaseModelArbitraryTypes):
     """Base representation of a slash command on Discord"""
 
     name: str
-    fn: Callable = None  # None if it has sub commands
+    fn: Annotated[Callable, Field(default=None)]  # None if it has sub commands
     category: str = "Miscellaneous"
     permissions: hikari.Permissions = hikari.Permissions.NONE
     defer: bool = False
     defer_with_ephemeral: bool = False
     description: str = None
     options: list[hikari.CommandOption] = None
-    subcommands: dict[str, Callable] = None
+    subcommands: Annotated[dict[str, Subcommand], Field(default_factory=dict)]
     rest_subcommands: list[hikari.CommandOption] = None
     accepted_custom_ids: dict[str, Callable] = None
     autocomplete_handlers: dict[str, Callable] = None
@@ -57,6 +58,8 @@ class Command(BaseModelArbitraryTypes):
     cooldown_key: str = "cooldown:{guild_id}:{user_id}:{command_name}"
 
     async def assert_premium(self, interaction: hikari.CommandInteraction):
+        """If the command requires premium, assert whether the server has premium."""
+
         if self.premium or CONFIG.BOT_RELEASE == "PRO":
             premium_status = await get_premium_status(guild_id=interaction.guild_id, interaction=interaction)
 
@@ -150,7 +153,7 @@ class Command(BaseModelArbitraryTypes):
         await self.assert_permissions(ctx)
         await self.assert_cooldown(ctx)
 
-        generator_or_coroutine = self.subcommands[subcommand_name](ctx) if subcommand_name else self.fn(ctx)
+        generator_or_coroutine = self.subcommands[subcommand_name]["fn"](ctx) if subcommand_name else self.fn(ctx)
 
         if hasattr(generator_or_coroutine, "__anext__"):
             async for generator_response in generator_or_coroutine:
@@ -162,6 +165,40 @@ class Command(BaseModelArbitraryTypes):
         # command executed without raising exceptions, so we can set the cooldown
         await self.set_cooldown(ctx)
 
+    def return_attr(self, attr_name: str, interaction: hikari.CommandInteraction, subcommand_name: str = None):
+        """Return the attribute from the subcommand if set; otherwise, return it from this command."""
+
+        if subcommand_name := subcommand_name or self.subcommand_name(interaction):
+            return self.subcommands[subcommand_name]["attrs"].get(attr_name)
+
+        return getattr(self, attr_name)
+
+    @staticmethod
+    def subcommand_name(interaction: hikari.CommandInteraction) -> str | None:
+        """Return the subcommand name if this is a subcommand."""
+
+        command_name = interaction.command_name
+
+        # find command
+        command: Command = slash_commands.get(command_name)
+
+        if not command:
+            return None
+
+        # subcommand checking
+        subcommand_option: list[hikari.CommandInteractionOption] = list(
+            filter(lambda o: o.type == hikari.OptionType.SUB_COMMAND, interaction.options or [])
+        )
+        subcommand_name = subcommand_option[0].name if subcommand_option else None
+
+        return subcommand_name
+
+
+class Subcommand(TypedDict):
+    """Represents how a subcommand is stored in each command."""
+
+    fn: Callable
+    attrs: NewCommandArgs
 
 class GenericCommand(ABC):
     """Generic command structure for slash commands."""
@@ -188,11 +225,11 @@ class NewCommandArgs(TypedDict, total=False):
     defer: bool
     defer_with_ephemeral: bool
     description: str
-    options: list[hikari.commands.CommandOptions]
-    subcommands: dict[str, Callable]
+    options: list[hikari.commands.CommandOption]
+    subcommands: dict[str, Subcommand]
     rest_subcommands: list[hikari.CommandOption]
     accepted_custom_ids: dict[str, Awaitable]
-    autocomplete_handlers: list[str]
+    autocomplete_handlers: dict[str, Callable]
     dm_enabled: bool
     prompts: list[Prompt]
     developer_only: bool
@@ -226,7 +263,7 @@ class CommandContext(BaseModelArbitraryTypes):
     member: hikari.InteractionMember
     user: hikari.User
     resolved: hikari.ResolvedOptionData | None
-    options: dict[str, str | int] = {}
+    options: Annotated[dict[str, str | int | None], Field(default_factory=dict)]
 
     interaction: hikari.CommandInteraction | hikari.ModalInteraction | hikari.ComponentInteraction | hikari.AutocompleteInteraction
 
@@ -330,30 +367,13 @@ async def handle_command(
     command = command_override
     command_options: dict = command_options or {}
 
-    if not command_override:
-        command_name = interaction.command_name
-        command_type = interaction.command_type
+    command_name = command_override.name if command_override else interaction.command_name
+    subcommand_name = Command.subcommand_name(interaction)
 
-        command = None
-        subcommand_name: str = None
+    command = slash_commands.get(command_name)
 
-        # find command
-        if command_type == hikari.CommandType.SLASH:
-            command: Command = slash_commands.get(command_name)
-
-            if not command:
-                return
-
-            # subcommand checking
-            subcommand_option: list[hikari.CommandInteractionOption] = list(
-                filter(lambda o: o.type == hikari.OptionType.SUB_COMMAND, interaction.options or [])
-            )
-            subcommand_name = subcommand_option[0].name if subcommand_option else None
-
-        else:
-            raise NotImplementedError()
-    else:
-        command_name = command_override.name
+    if not command:
+        return
 
     await command.assert_premium(interaction)
 
@@ -367,7 +387,7 @@ async def handle_command(
             else:
                 command_options = {o.name: o.value for o in interaction.options}
 
-        if command.defer:
+        if command.return_attr("defer", interaction, subcommand_name):
             yield await response.defer(ephemeral=command.defer_with_ephemeral)
 
     ctx = build_context(
@@ -390,32 +410,45 @@ async def handle_command(
 
 async def handle_autocomplete(interaction: hikari.AutocompleteInteraction, response: Response):
     """Handle an autocomplete interaction."""
-    # Iterate through commands and find the autocomplete function that corresponds to the slash cmd option name.
-    for command in slash_commands.values():
-        if not command.autocomplete_handlers:
-            continue
 
-        if not command.name == interaction.command_name:
-            continue
+    command: Command = slash_commands.get(interaction.command_name)
+    relevant_options: list[hikari.AutocompleteInteraction] = [] # slash commands has their options nested, so this flattens it
 
-        for command_option in interaction.options:
-            if not command_option.is_focused:
-                continue
+    if not command:
+        return
 
-            autocomplete_fn = command.autocomplete_handlers.get(command_option.name)
+    autocomplete_handlers = command.return_attr("autocomplete_handlers", interaction)
 
-            if not autocomplete_fn:
-                logging.error(f'Command {command.name} has no auto-complete handler "{command_option.name}"!')
-                return
+    if not autocomplete_handlers:
+        logging.error(f'Command {command.name} has no auto-complete handler!')
+        return
 
-            generator_or_coroutine = autocomplete_fn(build_context(interaction, response=response))
+    for command_option in interaction.options:
+        if command_option.type == hikari.OptionType.SUB_COMMAND:
+            focused_option = find(lambda o: o.is_focused, command_option.options)
+            relevant_options = command_option.options
+        else:
+            relevant_options = command_option
 
-            if hasattr(generator_or_coroutine, "__anext__"):
-                async for generator_response in generator_or_coroutine:
-                    yield generator_response
+    focused_option = find(lambda o: o.is_focused, relevant_options)
 
-            else:
-                yield await generator_or_coroutine
+    if not focused_option:
+        return
+
+    autocomplete_fn = autocomplete_handlers.get(focused_option.name)
+
+    if not autocomplete_fn:
+        logging.error(f'Command {command.name} has no auto-complete handler "{focused_option.name}"!')
+        return
+
+    generator_or_coroutine = autocomplete_fn(build_context(interaction, response=response), focused_option, relevant_options)
+
+    if hasattr(generator_or_coroutine, "__anext__"):
+        async for generator_response in generator_or_coroutine:
+            yield generator_response
+
+    else:
+        yield await generator_or_coroutine
 
 
 async def handle_modal(interaction: hikari.ModalInteraction, response: Response):
@@ -532,7 +565,7 @@ def new_command(command: Callable, **command_args: Unpack[NewCommandArgs]):
 
     command_name = command_args.get("name") or command_name_pattern.search(command.__name__).group(1).lower()
     command_fn = getattr(new_command_class, "__main__", None)  # None if it has sub commands
-    subcommands: dict[str, Callable] = {}
+    subcommands: dict[str, Subcommand] = {}
     rest_subcommands: list[hikari.CommandOption] = []
 
     command_args["description"] = new_command_class.__doc__
@@ -549,7 +582,7 @@ def new_command(command: Callable, **command_args: Unpack[NewCommandArgs]):
                     options=attr.__subcommandattrs__.get("options"),
                 )
             )
-            subcommands[attr_name] = attr
+            subcommands[attr_name] = {"fn": attr, "attrs": attr.__subcommandattrs__}
 
     slash_commands[command_name] = Command(
         fn=command_fn,

@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+import hikari
 
 from bloxlink_lib import BaseModel, RobloxUser, RobloxGroup, get_binds, get_group, find
 
@@ -94,23 +95,18 @@ async def roblox_user_lookup_autocomplete(ctx: "CommandContext"):
 
     return ctx.response.send_autocomplete(result_list)
 
-async def roblox_group_lookup_autocomplete(ctx: "CommandContext"):
+async def roblox_group_lookup_autocomplete(ctx: "CommandContext", focused_option: hikari.AutocompleteInteractionOption, relevant_options: list[hikari.AutocompleteInteractionOption]):
     """Return a matching Roblox group from the user's input."""
 
-    interaction = ctx.interaction
-    option = next(
-        x for x in interaction.options if x.is_focused
-    )  # Makes sure that we get the correct command input in a generic way
-    user_input = str(option.value)
-
-    group: RobloxGroup = None
     result_list: list[str] = []
 
-    if not user_input:
-        return interaction.build_response([])
+    if not focused_option.value:
+        return ctx.response.send_autocomplete([
+            AutocompleteOption(name="Type your group URL or ID", value="no_group")
+        ])
 
     try:
-        group = await get_group(user_input)
+        group = await get_group(focused_option.value)
     except (RobloxNotFound, RobloxAPIError):
         pass
 
@@ -123,32 +119,28 @@ async def roblox_group_lookup_autocomplete(ctx: "CommandContext"):
 
     return ctx.response.send_autocomplete(result_list)
 
-async def roblox_group_roleset_autocomplete(ctx: "CommandContext"):
+async def roblox_group_roleset_autocomplete(ctx: "CommandContext", focused_option: hikari.AutocompleteInteractionOption, relevant_options: list[hikari.AutocompleteInteractionOption]):
     """Return a matching Roblox roleset from the user's input."""
 
-    interaction = ctx.interaction
+    group_id = find(lambda o: o.name == "group", relevant_options)
 
-    roleset = find(lambda o: o.is_focused, interaction.options)
-    group_id = find(lambda o: o.name == "group", interaction.options)
-
-    if not roleset or not group_id:
-        return interaction.build_response([])
-
-
+    if not (focused_option and group_id):
+        return ctx.response.send_autocomplete(None)
 
     group: RobloxGroup = None
     result_list: list[str] = []
 
-    if not user_input:
-        return interaction.build_response([])
-
     try:
-        group = await get_group(user_input)
+        group = await get_group(group_id.value)
     except (RobloxNotFound, RobloxAPIError):
         pass
 
     if group:
-        result_list.append(AutocompleteOption(name=f"{group.name} ({group.id})", value=str(group.id)))
+        group_rolesets = filter(lambda r: r.name.lower().startswith(focused_option.value.lower()), group.rolesets.values()) if focused_option.value else group.rolesets.values()
+
+        for roleset in group_rolesets:
+            result_list.append(AutocompleteOption(name=f"{roleset.name} ({roleset.id})", value=str(roleset.id)))
+
     else:
         result_list.append(
             AutocompleteOption(name="No group found. Please double check the ID or URL.", value="no_group")
