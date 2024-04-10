@@ -78,8 +78,9 @@ class GroupLockCommand(GenericCommand):
         group_lock_group = group_lock.get(group_value) or {}
 
         group_lock_rolesets: CoerciveSet[int] = CoerciveSet(int, group_lock_group.get("roleSets", []))
-        group_lock_rolesets.add(roleset_value)
-        group_lock[group_value] = group_lock_group
+
+        if roleset_value:
+            group_lock_rolesets.add(roleset_value)
 
         if group_value in group_lock and not roleset_value:
             raise RobloxNotFound("The Roblox group is already in your server's group lock")
