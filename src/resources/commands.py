@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Callable, Type, TypedDict, Unpack, Awaitable, Annotated, Any, TYPE_CHECKING
+from typing import Callable, Type, TypedDict, Unpack, Awaitable, Annotated, TYPE_CHECKING
 from abc import ABC, abstractmethod
 from datetime import timedelta
 import hikari
@@ -165,14 +165,11 @@ class Command(BaseModelArbitraryTypes):
         # command executed without raising exceptions, so we can set the cooldown
         await self.set_cooldown(ctx)
 
-    def return_attr(self, attr_name: str, interaction: hikari.CommandInteraction, subcommand_name: str = None) -> Any:
+    def return_attr(self, attr_name: str, interaction: hikari.CommandInteraction, subcommand_name: str = None):
         """Return the attribute from the subcommand if set; otherwise, return it from this command."""
 
         if subcommand_name := subcommand_name or self.subcommand_name(interaction):
-            subcommand_attr = self.subcommands[subcommand_name]["attrs"].get(attr_name)
-
-            if subcommand_attr:
-                return subcommand_attr
+            return self.subcommands[subcommand_name]["attrs"].get(attr_name)
 
         return getattr(self, attr_name)
 

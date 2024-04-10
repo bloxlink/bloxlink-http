@@ -139,7 +139,7 @@ async def roblox_group_roleset_autocomplete(ctx: "CommandContext", focused_optio
         group_rolesets = filter(lambda r: r.name.lower().startswith(focused_option.value.lower()), group.rolesets.values()) if focused_option.value else group.rolesets.values()
 
         for roleset in group_rolesets:
-            result_list.append(AutocompleteOption(name=f"{roleset.name} ({roleset.id})", value=str(roleset.rank)))
+            result_list.append(AutocompleteOption(name=f"{roleset.name} ({roleset.id})", value=str(roleset.id)))
 
     else:
         result_list.append(

@@ -3,10 +3,11 @@ from datetime import datetime, timedelta
 
 import hikari
 
-from bloxlink_lib import BaseModel, parse_into, Message
+from bloxlink_lib import BaseModel, parse_into
 from bloxlink_lib.database import redis
 
 from resources.bloxlink import instance as bloxlink
+from resources.exceptions import Message
 from resources.commands import CommandContext, GenericCommand
 from resources.ui.components import Button, CommandCustomID, component_author_validation
 from resources.ui import ProgressBar
