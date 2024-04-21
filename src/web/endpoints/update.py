@@ -37,6 +37,7 @@ class UpdateUserPayload(BaseModel):
 
     guild_id: int
     member_id: int
+    dm_user: bool = False
 
 
 class MemberJoinPayload(BaseModel):
@@ -77,6 +78,7 @@ class Update(APIController):
         content: UpdateUserPayload = content.value
         member_id = content.member_id
         guild_id = content.guild_id
+        dm_user = content.dm_user
 
         try:
             member = await bloxlink.rest.fetch_member(guild_id, member_id)
@@ -92,7 +94,7 @@ class Update(APIController):
 
         try:
             roblox_account = await get_user_account(member_id, guild_id=guild_id, raise_errors=False)
-            await binds.apply_binds(member, guild_id, roblox_account, moderate_user=True)
+            await binds.apply_binds(member, guild_id, roblox_account, moderate_user=True, dm_user=dm_user)
         except BloxlinkForbidden:
             return status_code(StatusCodes.FORBIDDEN, {
                 "error": "Bloxlink does not have permission to update this user."
