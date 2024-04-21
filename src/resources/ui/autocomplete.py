@@ -17,7 +17,7 @@ class AutocompleteOption(BaseModel):
     value: str
 
 
-async def bind_category_autocomplete(ctx: "CommandContext"):
+async def bind_category_autocomplete(ctx: "CommandContext", focused_option: hikari.AutocompleteInteractionOption, relevant_options: list[hikari.AutocompleteInteractionOption]):
     """Autocomplete for a bind category input based upon the binds the user has."""
 
     binds = await get_binds(ctx.guild_id)
@@ -26,18 +26,20 @@ async def bind_category_autocomplete(ctx: "CommandContext"):
     return ctx.response.send_autocomplete([AutocompleteOption(name=x, value=x.lower()) for x in bind_types])
 
 
-async def bind_id_autocomplete(ctx: "CommandContext"):
+async def bind_id_autocomplete(ctx: "CommandContext", focused_option: hikari.AutocompleteInteractionOption, relevant_options: list[hikari.AutocompleteInteractionOption]):
     """Autocomplete for bind ID inputs, expects that there is an additional category option in the
     command arguments that must be set prior to this argument."""
 
     interaction = ctx.interaction
 
-    choices = [
+    choices: list[AutocompleteOption] = [
         # base option
         AutocompleteOption(name="View all your bindings", value="view_binds")
     ]
 
-    options = {o.name.lower(): o for o in interaction.options}
+    options: dict[str, hikari.AutocompleteInteractionOption] = {
+        o.name.lower(): o for o in interaction.options
+    }
 
     category_option = options["category"].value.lower().strip() if options.get("category") else None
     id_option = options["id"].value.lower().strip() if options.get("id") else None
@@ -66,7 +68,7 @@ async def bind_id_autocomplete(ctx: "CommandContext"):
     return ctx.response.send_autocomplete(choices)
 
 
-async def roblox_user_lookup_autocomplete(ctx: "CommandContext"):
+async def roblox_user_lookup_autocomplete(ctx: "CommandContext", focused_option: hikari.AutocompleteInteractionOption, relevant_options: list[hikari.AutocompleteInteractionOption]):
     """Return a matching Roblox user from the user's input."""
 
     interaction = ctx.interaction
@@ -98,7 +100,7 @@ async def roblox_user_lookup_autocomplete(ctx: "CommandContext"):
 async def roblox_group_lookup_autocomplete(ctx: "CommandContext", focused_option: hikari.AutocompleteInteractionOption, relevant_options: list[hikari.AutocompleteInteractionOption]):
     """Return a matching Roblox group from the user's input."""
 
-    result_list: list[str] = []
+    result_list: list[AutocompleteOption] = []
     group: RobloxGroup = None
 
     if not focused_option.value:
@@ -129,7 +131,7 @@ async def roblox_group_roleset_autocomplete(ctx: "CommandContext", focused_optio
         return ctx.response.send_autocomplete(None)
 
     group: RobloxGroup = None
-    result_list: list[str] = []
+    result_list: list[AutocompleteOption] = []
 
     try:
         group = await get_group(group_id.value)

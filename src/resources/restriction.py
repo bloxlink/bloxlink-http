@@ -130,11 +130,11 @@ class Restriction(BaseModelArbitraryTypes):
                 self.action = "ban" # TODO: let admins pick
                 break
 
-    async def moderate(self):
+    async def moderate(self, dm_user: bool=True):
         """Kick or Ban a user based on the determined restriction."""
 
         # Only DM users if they're being removed; reason will show in main guild regardless.
-        if self.action in ("kick", "ban", "dm"):
+        if dm_user and self.action in ("kick", "ban", "dm"):
             await self.dm_user()
 
         reason = (

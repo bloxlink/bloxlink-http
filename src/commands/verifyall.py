@@ -8,7 +8,7 @@ from bloxlink_lib.database import redis
 
 from resources.bloxlink import instance as bloxlink
 from resources.commands import CommandContext, GenericCommand
-from resources.ui.components import Button, CommandCustomID, component_author_validation
+from resources.ui.components import Button, CommandCustomID, component_author_validation, BaseCommandCustomID
 from resources.ui import ProgressBar
 
 CHUNK_LIMIT = 100
@@ -128,8 +128,14 @@ async def cancel_progress(ctx: CommandContext, custom_id: ProgressCustomID):
     defer=True,
     permissions=hikari.Permissions.MANAGE_GUILD | hikari.Permissions.MANAGE_ROLES,
     accepted_custom_ids={
-        "verifyall:verifyall_progress_button": get_progress,
-        "verifyall:verifyall_cancel_button": cancel_progress
+        BaseCommandCustomID(
+            command_name="verifyall",
+            section="verifyall_progress_button"
+        ): get_progress,
+        BaseCommandCustomID(
+            command_name="verifyall",
+            section="verifyall_cancel_button"
+        ): cancel_progress
     },
     cooldown=timedelta(days=1),
     cooldown_key="cooldown:{guild_id}",
