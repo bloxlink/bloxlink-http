@@ -135,5 +135,7 @@ dmypy.json
 run.py
 src/commands/cleanup.py
 archive/
+poetry.lock
+requirements.txt
 
 .devcontainer/
