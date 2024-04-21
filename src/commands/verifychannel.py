@@ -2,11 +2,16 @@ import hikari
 from bloxlink_lib import get_user_account
 from resources.bloxlink import instance as bloxlink
 from resources.commands import CommandContext, GenericCommand
-from resources.ui.components import Button, TextInput
+from resources.ui.components import Button, TextInput, UnsupportedCustomID
 from resources.ui.modals import build_modal
 from resources.premium import get_premium_status
 from resources import binds
 from resources.api.roblox import users
+
+
+VERIFY_BUTTON_ID = UnsupportedCustomID(
+    content="verify_view:verify_button",
+)
 
 async def verify_button_click(ctx: CommandContext):
     yield await ctx.response.defer(True)
@@ -40,7 +45,7 @@ async def verify_button_click(ctx: CommandContext):
     category="Administration",
     permissions=hikari.Permissions.MANAGE_GUILD,
     accepted_custom_ids={
-        "verify_view:verify_button": verify_button_click,
+        VERIFY_BUTTON_ID: verify_button_click
     }
 )
 class VerifyChannelCommand(GenericCommand):
@@ -56,7 +61,7 @@ class VerifyChannelCommand(GenericCommand):
         message_text = "Welcome to **{server-name}!** Click the button below to Verify with Bloxlink and gain access to the rest of the server."
 
         if premium_status.active:
-            modal = build_modal(
+            modal = await build_modal(
                 title="Verification Channel",
                 command_data={},
                 interaction=ctx.interaction,
@@ -97,7 +102,7 @@ class VerifyChannelCommand(GenericCommand):
 
         button_menu = [
             Button(
-                custom_id="verify_view:verify_button",
+                custom_id=str(VERIFY_BUTTON_ID),
                 label=button_text,
                 style=Button.ButtonStyle.SUCCESS,
             ),

@@ -234,6 +234,7 @@ async def apply_binds(
     roblox_account: users.RobloxAccount = None,
     *,
     moderate_user: bool = False,
+    dm_user: bool = True,
     update_embed_for_unverified: bool = False,
     mention_roles: bool = True,
 ) -> InteractiveMessage:
@@ -303,7 +304,7 @@ async def apply_binds(
         # Remove the user if we're moderating.
         if moderate_user:
             try:
-                await restriction_check.moderate()
+                await restriction_check.moderate(dm_user=dm_user)
             except (hikari.ForbiddenError, hikari.NotFoundError):
                 warnings.append("User could not be removed from the server.")
             else:

@@ -120,7 +120,7 @@ class Update(APIController):
         content: UpdateUsersPayload = content.value
 
         # Update users, send response only when this is done
-        await process_update_members(content.members, content.guild_id, content.nonce)
+        await process_update_members(content.members, content.guild_id, content.nonce, False)
 
         # TODO: We're currently waiting until this chunk is done before replying. This is likely not reliable
         # for the gateway to wait upon in the event of HTTP server reboots.
@@ -194,7 +194,7 @@ class Update(APIController):
         })
 
 
-async def process_update_members(members: list[MemberSerializable], guild_id: str, nonce: str):
+async def process_update_members(members: list[MemberSerializable], guild_id: str, nonce: str, dm_users: bool=False):
     """Process a list of members to update from the gateway."""
 
     for member in members:
@@ -208,7 +208,7 @@ async def process_update_members(members: list[MemberSerializable], guild_id: st
 
         try:
             roblox_account = await get_user_account(member.id, guild_id=guild_id, raise_errors=False)
-            await binds.apply_binds(member, guild_id, roblox_account, moderate_user=True)
+            await binds.apply_binds(member, guild_id, roblox_account, moderate_user=False, dm_user=dm_users)
         except (BloxlinkForbidden, RobloxDown):
             # bloxlink doesn't have permissions to give roles... might be good to
             # TODO: stop after n attempts where this is received so that way we don't flood discord with

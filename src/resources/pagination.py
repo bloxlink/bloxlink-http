@@ -1,24 +1,31 @@
+from __future__ import annotations
+
 import math
-from typing import Any, Sequence, Coroutine, Literal
+from typing import Any, Sequence, Coroutine, Literal, TYPE_CHECKING
 
 import hikari
 
 from resources.constants import UNICODE_LEFT, UNICODE_RIGHT
-from resources.ui.components import CommandCustomID, Component, Button, Separator
+from resources.ui.components import CommandCustomID, Component, Button, Separator, component_author_validation, disable_components
+
+if TYPE_CHECKING:
+    from resources.commands import CommandContext
+
+
+DEFAULT_MAX_PER_PAGE = 10
 
 
 class PaginatorCustomID(CommandCustomID):
     """Represents the custom ID for the paginator"""
 
     page_number: int = 0
+    has_custom_page_handler: bool = False
+    max_per_page: int = DEFAULT_MAX_PER_PAGE
+    generate_components: bool = True
+    include_cancel_button: bool = False
 
     def model_post_init(self, __context: Any) -> None:
         self.type = "paginator"
-
-class PaginatorCancelCustomID(CommandCustomID):
-    """Represents the custom ID for the paginator cancel button"""
-
-    type: Literal["cancel"] = "cancel"
 
 
 class Paginator[T: PaginatorCustomID]:
@@ -29,13 +36,14 @@ class Paginator[T: PaginatorCustomID]:
         guild_id: int,
         user_id: int,
         items: Sequence[T],
-        page_number: int=0,
-        max_items: int=10,
-        custom_formatter: Coroutine | None=None,
-        component_generation: Coroutine | None=None,
+        page_number: int = 0,
+        max_items: int = DEFAULT_MAX_PER_PAGE,
+        custom_formatter: Coroutine | None = None,
+        component_generation: Coroutine | None = None,
+        has_custom_page_handler: bool = False,
         custom_id_format: PaginatorCustomID = PaginatorCustomID,
         item_filter: Coroutine | None = None,
-        include_cancel_button: bool=False,
+        include_cancel_button: bool = False,
     ):
         """Create a paginator handler.
 
@@ -70,8 +78,66 @@ class Paginator[T: PaginatorCustomID]:
         self.custom_formatter = custom_formatter
         self.component_generation = component_generation
 
-        self.custom_id_format = custom_id_format
+        self.custom_id_format = custom_id_format.set_fields(
+            has_custom_page_handler=has_custom_page_handler,
+            max_per_page=max_items,
+            include_cancel_button=include_cancel_button,
+            generate_components=bool(component_generation)
+        )
         self.include_cancel_button = include_cancel_button
+
+    @staticmethod
+    @component_author_validation(defer=False)
+    async def default_entry_point(ctx: 'CommandContext', custom_id: PaginatorCustomID):
+        """Handle the left and right buttons for pagination as well as the cancel button."""
+
+        from resources.commands import slash_commands
+
+        # TODO: Support deferring via yield for paginator.
+        ctx.response.defer_through_rest = True
+        await ctx.response.defer()
+
+        interaction = ctx.interaction
+        guild_id = interaction.guild_id
+
+        author_id = custom_id.user_id
+        page_number = custom_id.page_number
+        command_name = custom_id.command_name
+        max_items = custom_id.max_per_page
+        generate_components = custom_id.generate_components
+        include_cancel_button = custom_id.include_cancel_button
+        is_cancel_button = custom_id.section == "cancel"
+
+        command = slash_commands.get(command_name)
+
+        if not command:
+            await ctx.response.send("Could not find the command. This might be an old page.", ephemeral=True)
+            return
+
+        if is_cancel_button:
+            await disable_components(interaction)
+            return
+
+        paginator = Paginator(
+            guild_id,
+            author_id,
+            max_items=max_items,
+            items=await command.paginator_options["return_items"](ctx),
+            page_number=page_number,
+            custom_formatter=command.paginator_options["format_items"],
+            component_generation=generate_components and command.paginator_options.get("component_generator"),
+            item_filter=command.paginator_options.get("filter_items"),
+            custom_id_format=PaginatorCustomID(
+                command_name=command_name,
+                user_id=author_id,
+            ),
+            include_cancel_button=include_cancel_button,
+        )
+
+        embed = await paginator.embed
+        components = await paginator.components
+
+        await ctx.response.send(embed=embed, components=components, edit_original=True)
 
     @property
     def current_items(self) -> list[T]:

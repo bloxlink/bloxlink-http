@@ -10,7 +10,7 @@ repository = "https://github.com/bloxlink/bloxlink-http"
 
 [tool.poetry.dependencies]
 python = "<3.13, >=3.12"
-hikari = {git = "https://github.com/hikari-py/hikari.git", rev = "refs/pull/1803/merge"}
+hikari = {git = "https://github.com/hikari-py/hikari.git", rev = "318a670c2687ea641e1727f83444dc782a5f1a09"}
 hikari-yuyo = { version = "1.19.1", extras = ["asgi"] }
 motor = "3.3.2"
 hiredis = "2.3.2"

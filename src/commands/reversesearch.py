@@ -45,7 +45,7 @@ class ReverseSearchCommand(GenericCommand):
         if not account:
             raise RobloxNotFound("The Roblox user you were searching for does not exist.")
 
-        discord_ids = await reverse_lookup(account.id)
+        discord_ids = await reverse_lookup(account)
 
         for discord_id in discord_ids:
             user = await bloxlink.fetch_discord_member(guild, discord_id, "id")

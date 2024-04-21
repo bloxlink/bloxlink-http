@@ -1,8 +1,5 @@
 from bloxlink_lib.exceptions import *
 
-class Message(BloxlinkException):
-    """Generic exception to communicate some message to the user."""
-
 class BloxlinkForbidden(BloxlinkException):
     """Raised when a user is forbidden from using a command or
     Bloxlink does not have the proper permissions.

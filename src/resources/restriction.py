@@ -17,9 +17,10 @@ class RestrictionResponse(BaseModel):
     unevaluated: list[Literal["disallowAlts", "disallowBanEvaders"]] = Field(default_factory=list)
     is_restricted: bool = False
     reason: str | None
+    reason_suffix: str | None
     action: Literal["kick", "ban", "dm"] | None
     source: Literal["ageLimit", "groupLock", "disallowAlts", "banEvader"] | None
-    # warnings: list[str]
+    # warnings: list[str] = Field(default_factory=list)
 
 
 class Restriction(BaseModelArbitraryTypes):
@@ -31,17 +32,17 @@ class Restriction(BaseModelArbitraryTypes):
     guild_name: str = None
 
     restricted: bool = False
-    reason: str = None
+    reason: str | None = None
     action: Literal["kick", "ban", "dm", None] = None
     source: Literal["ageLimit", "groupLock", "disallowAlts", "banEvader", None] = None
     warnings: list[Annotated[str, Field(default_factory=list)]] = None
     unevaluated: list[Literal["disallowAlts", "disallowBanEvaders"]] = Field(default_factory=list)
+    reason_suffix: str | None = None
 
     alts: list[int] = Field(default_factory=list)
     banned_discord_id: int = None
 
     _synced: bool = False
-
 
     async def sync(self):
         """Fetch restriction data from the API."""
@@ -73,7 +74,7 @@ class Restriction(BaseModelArbitraryTypes):
         self.reason = restriction_data.reason
         self.action = restriction_data.action
         self.source = restriction_data.source
-        # self.warnings = restriction_data.warnings
+        self.reason_suffix = restriction_data.reason_suffix
         self.unevaluated = restriction_data.unevaluated
 
         if self.unevaluated and self.roblox_user:
@@ -129,11 +130,11 @@ class Restriction(BaseModelArbitraryTypes):
                 self.action = "ban" # TODO: let admins pick
                 break
 
-    async def moderate(self):
+    async def moderate(self, dm_user: bool=True):
         """Kick or Ban a user based on the determined restriction."""
 
         # Only DM users if they're being removed; reason will show in main guild regardless.
-        if self.action in ("kick", "ban", "dm"):
+        if dm_user and self.action in ("kick", "ban", "dm"):
             await self.dm_user()
 
         reason = (
@@ -170,17 +171,7 @@ class Restriction(BaseModelArbitraryTypes):
 
         verification_url = await get_verification_link(self.member.id, self.guild_id)
 
-        match self.source:
-            # fmt:off
-            case "ageLimit":
-                reason_suffix = "this server requires users to have a Roblox account created after a certain date"
-            case "groupLock":
-                reason_suffix = "this server requires users to be in, or have a specific rank in, a Roblox group"
-            case "banEvader":
-                reason_suffix = "this server does not allow ban evasion"
-            # fmt:on
-
-        embed.description = (f"You could not verify in **{self.guild_name or 'the server'}** because {reason_suffix}."
+        embed.description = (f"You could not verify in **{self.guild_name or 'the server'}** because {self.reason_suffix}."
                              "\n\n> *Think this is in error? Try using the buttons below to switch your account, "
                              f"or join our [support server](<{SERVER_INVITE}>) and use `/verify` there.*"
                             )
