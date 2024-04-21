@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Callable, Type, TypedDict, Unpack, Awaitable, Annotated, Any, TYPE_CHECKING
+from typing import Callable, Type, TypedDict, Unpack, Annotated, Any, TYPE_CHECKING
 from abc import ABC, abstractmethod
 from datetime import timedelta
 import hikari
@@ -19,6 +19,8 @@ from resources.exceptions import (
 from resources.ui.modals import ModalCustomID
 from resources.premium import get_premium_status
 from resources.response import Prompt, PromptCustomID, PromptPageData, Response
+from resources.pagination import PaginatorCustomID, Paginator
+from resources.ui.components import CommandCustomID, BaseCommandCustomID, UnsupportedCustomID
 from static.whitelist import WHITELISTED_GUILDS
 from config import CONFIG
 
@@ -46,7 +48,7 @@ class Command(BaseModelArbitraryTypes):
     options: list[hikari.CommandOption] = None
     subcommands: Annotated[dict[str, Subcommand], Field(default_factory=dict)]
     rest_subcommands: list[hikari.CommandOption] = None
-    accepted_custom_ids: dict[str, Callable] = None
+    accepted_custom_ids: dict[BaseCommandCustomID | UnsupportedCustomID, Callable] = None
     autocomplete_handlers: dict[str, Callable] = None
     dm_enabled: bool = False
     prompts: list[Type[Prompt]] = []
@@ -56,6 +58,7 @@ class Command(BaseModelArbitraryTypes):
     guild_ids: list[int] = [] # if empty, it's global
     cooldown: timedelta = None
     cooldown_key: str = "cooldown:{guild_id}:{user_id}:{command_name}"
+    paginator_options: Annotated[dict, Field(default_factory=dict)]
 
     async def assert_premium(self, interaction: hikari.CommandInteraction):
         """If the command requires premium, assert whether the server has premium."""
@@ -231,7 +234,7 @@ class NewCommandArgs(TypedDict, total=False):
     options: list[hikari.commands.CommandOption]
     subcommands: dict[str, Subcommand]
     rest_subcommands: list[hikari.CommandOption]
-    accepted_custom_ids: dict[str, Awaitable]
+    accepted_custom_ids: dict[BaseCommandCustomID | UnsupportedCustomID, Callable]
     autocomplete_handlers: dict[str, Callable]
     dm_enabled: bool
     prompts: list[Prompt]
@@ -241,6 +244,7 @@ class NewCommandArgs(TypedDict, total=False):
     guild_ids: list[int]
     cooldown: timedelta
     cooldown_key: str
+    paginator_options: dict
 
 
 class CommandContext(BaseModelArbitraryTypes):
@@ -358,7 +362,7 @@ async def handle_interaction(interaction: hikari.Interaction):
 
 
 async def handle_command(
-    interaction: hikari.CommandInteraction,
+    interaction: hikari.CommandInteraction | hikari.ModalInteraction,
     response: Response,
     *,
     command_override: Command = None,
@@ -371,7 +375,7 @@ async def handle_command(
     command_options: dict = command_options or {}
 
     command_name = command_override.name if command_override else interaction.command_name
-    subcommand_name = Command.subcommand_name(interaction)
+    subcommand_name = subcommand_name or (isinstance(interaction, hikari.CommandInteraction) and Command.subcommand_name(interaction)) or None
 
     command = slash_commands.get(command_name)
 
@@ -431,7 +435,7 @@ async def handle_autocomplete(interaction: hikari.AutocompleteInteraction, respo
             focused_option = find(lambda o: o.is_focused, command_option.options)
             relevant_options = command_option.options
         else:
-            relevant_options = command_option
+            relevant_options = [command_option]
 
     focused_option = find(lambda o: o.is_focused, relevant_options)
 
@@ -519,41 +523,69 @@ async def handle_component(interaction: hikari.ComponentInteraction, response: R
 
     custom_id = interaction.custom_id
 
-    # iterate through commands and find the custom_id mapped function
-    for command in slash_commands.values():
-        # find matching custom_id handler
-        if command.accepted_custom_ids:
-            for accepted_custom_id, custom_id_fn in command.accepted_custom_ids.items():
-                if custom_id.startswith(accepted_custom_id):
-                    generator_or_coroutine = custom_id_fn(build_context(interaction, response=response))
+    try:
+        parsed_custom_id: CommandCustomID = CommandCustomID.from_str(custom_id)
+    except (TypeError, IndexError):
+        # old custom ID
+        # iterate through commands and find the custom_id mapped function
+        logging.warning(f"Unsupported custom_id: {custom_id}")
+        for command in slash_commands.values():
+            # find matching custom_id handler
+            if command.accepted_custom_ids:
+                for accepted_custom_id, custom_id_fn in command.accepted_custom_ids.items():
+                    if custom_id.startswith(str(accepted_custom_id)):
+                        generator_or_coroutine = custom_id_fn(build_context(interaction, response=response))
 
-                    if hasattr(generator_or_coroutine, "__anext__"):
-                        async for generator_response in generator_or_coroutine:
+                        if hasattr(generator_or_coroutine, "__anext__"):
+                            async for generator_response in generator_or_coroutine:
+                                yield generator_response
+
+                        else:
+                            yield await generator_or_coroutine
+
+                        return
+    else:
+        command_name = parsed_custom_id.command_name
+        command = slash_commands.get(command_name)
+
+        if not command:
+            return
+
+        match parsed_custom_id.type:
+            case "paginator":
+                if command.paginator_options and command.paginator_options.get("return_items"):
+                    # use default page switcher
+                    paginator_custom_id = PaginatorCustomID.from_str(custom_id)
+                    yield await Paginator.default_entry_point(build_context(interaction, response=response), paginator_custom_id).__anext__()
+                    return
+            case "prompt":
+                prompt_custom_id = PromptCustomID.from_str(custom_id)
+                prompt = await Prompt.find_prompt(prompt_custom_id, interaction, response, command=command)
+
+                if prompt:
+                    async for generator_response in prompt.entry_point(interaction):
+                        if not isinstance(generator_response, PromptPageData):
+                            logging.debug("1 %s", generator_response)
                             yield generator_response
-
-                    else:
-                        yield await generator_or_coroutine
 
                     return
 
-        # find matching prompt handler
-        if command.prompts:
-            try:
-                prompt_custom_id = PromptCustomID.from_str(custom_id)
-            except (TypeError, IndexError):
-                # Keeps prompts from preventing normal components from firing on iteration.
-                # Since we check for a valid handler
-                continue
+    # everything else failed, so it must be handled by the command itself
+    # find matching command handler
+    for accepted_custom_id, custom_id_fn in command.accepted_custom_ids.items():
+        if custom_id.startswith(str(accepted_custom_id)):
+            generator_or_coroutine = custom_id_fn(build_context(interaction, response=response))
 
-            prompt = await Prompt.find_prompt(prompt_custom_id, interaction, response, command=command)
+            if hasattr(generator_or_coroutine, "__anext__"):
+                async for generator_response in generator_or_coroutine:
+                    yield generator_response
 
-            if prompt:
-                async for generator_response in prompt.entry_point(interaction):
-                    if not isinstance(generator_response, PromptPageData):
-                        logging.debug("1 %s", generator_response)
-                        yield generator_response
+            else:
+                yield await generator_or_coroutine
 
-                break
+            return
+
+    logging.error(f"Invalid custom_id: {custom_id}")
 
 def new_command(command: Callable, **command_args: Unpack[NewCommandArgs]):
     """Registers a command with Bloxlink.

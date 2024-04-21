@@ -8,7 +8,7 @@ from resources.bloxlink import instance as bloxlink
 from resources.commands import CommandContext, GenericCommand
 from resources.pagination import Paginator, PaginatorCustomID
 from resources.ui.autocomplete import bind_category_autocomplete, bind_id_autocomplete
-from resources.ui.components import component_author_validation
+from resources.ui.components import component_author_validation, BaseCommandCustomID
 
 MAX_BINDS_PER_PAGE = 5
 
@@ -121,7 +121,10 @@ async def viewbinds_button(ctx: CommandContext, custom_id: ViewbindsCustomID):
         ),
     ],
     accepted_custom_ids={
-        "viewbinds": viewbinds_button,
+        BaseCommandCustomID(
+            command_name="viewbinds",
+            section="button"
+        ): viewbinds_button,
     },
     autocomplete_handlers={
         "category": bind_category_autocomplete,

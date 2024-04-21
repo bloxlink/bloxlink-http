@@ -1,4 +1,6 @@
-from typing import Type, Literal, Self
+from __future__ import annotations
+
+from typing import Type, Literal, Self, Annotated
 from enum import Enum
 from abc import ABC, abstractmethod
 from pydantic import Field, field_validator
@@ -30,7 +32,7 @@ class BaseCustomID(BaseModel):
         # Return the dataclass instance, discarding additional values
         return custom_id_instance
 
-    def set_fields(self, **kwargs):
+    def set_fields(self, **kwargs) -> Self:
         """Sets the fields in the custom_id object."""
 
         # Split the existing custom_id into parts
@@ -60,18 +62,31 @@ class BaseCustomID(BaseModel):
 
         return ":".join(field_values)
 
+    def __hash__(self) -> int:
+        return hash(str(self))
+
     def __add__(self, other: Self) -> str:
         return f"{str(self)}:{str(other)}"
 
+class UnsupportedCustomID(BaseCustomID):
+    """Old custom ID from V3. Only has one attribute, the unsupported custom id."""
 
-class CommandCustomID(BaseCustomID):
+    content: str
+
+class BaseCommandCustomID(BaseCustomID):
+    """Very basic custom ID. Used to map custom ID -> handler in a command."""
+
+    command_name: str
+    section: str = "" # used to differentiate between different sections of the same command
+
+class CommandCustomID(BaseCommandCustomID):
     """Custom ID containing more information for commands."""
 
     command_name: str
     section: str = "" # used to differentiate between different sections of the same command
     subcommand_name: str = ""
     type: Literal["command", "prompt", "paginator"] = "command"
-    user_id: int
+    user_id: int = 0
 
 
 class Component(BaseModelArbitraryTypes, ABC):
@@ -115,7 +130,7 @@ class Button(Component):
     is_disabled: bool = False
     emoji: hikari.Emoji = None
     url: str = None
-    type: hikari.ComponentType.BUTTON = Field(default=hikari.ComponentType.BUTTON)
+    type: Annotated[hikari.ComponentType.BUTTON, Field(default=hikari.ComponentType.BUTTON)]
 
     def model_post_init(self, __context):
         if self.url:
@@ -159,7 +174,7 @@ class RoleSelectMenu(SelectMenu):
     """Base class for role select menus."""
 
     placeholder: str = "Select a role..."
-    type: hikari.ComponentType.ROLE_SELECT_MENU = Field(default=hikari.ComponentType.ROLE_SELECT_MENU)
+    type: Annotated[hikari.ComponentType.ROLE_SELECT_MENU, Field(default=hikari.ComponentType.ROLE_SELECT_MENU)]
 
     def build(self, action_rows:list[hikari.impl.MessageActionRowBuilder]):
         # Role menus take up one full action row.
@@ -184,8 +199,8 @@ class RoleSelectMenu(SelectMenu):
 class TextSelectMenu(SelectMenu):
     """Base class for text select menus."""
 
-    options: list['Option'] = Field(default_factory=list)
-    type: hikari.ComponentType.TEXT_SELECT_MENU = Field(default=hikari.ComponentType.TEXT_SELECT_MENU)
+    options: Annotated[list['Option'], Field(default_factory=list)]
+    type: Annotated[hikari.ComponentType.TEXT_SELECT_MENU, Field(default=hikari.ComponentType.TEXT_SELECT_MENU)]
 
     class Option(BaseModelArbitraryTypes):
         """Option for a text select menu."""
@@ -239,7 +254,7 @@ class TextInput(Component):
     max_length: int = None
     required: bool = False
     style: TextInputStyle = TextInputStyle.SHORT
-    type: hikari.ComponentType.TEXT_INPUT = Field(default=hikari.ComponentType.TEXT_INPUT)
+    type: Annotated[hikari.ComponentType.TEXT_INPUT, Field(default=hikari.ComponentType.TEXT_INPUT)]
 
     def build(self, action_rows:list[hikari.impl.MessageActionRowBuilder]):
         # Text inputs take up one full action row.
@@ -320,22 +335,20 @@ async def set_components(message: hikari.Message, *, values: list = None, compon
 
             for subcomponent in component:
                 if isinstance(subcomponent, hikari.SelectMenuComponent):
-                    new_select_menu = row.add_select_menu(
-                        subcomponent.type,
-                        subcomponent.custom_id,
-                        placeholder=subcomponent.placeholder,
-                        min_values=subcomponent.min_values,
-                        max_values=subcomponent.max_values,
-                        is_disabled=subcomponent.is_disabled,
-                    )
-
                     if subcomponent.type == hikari.ComponentType.TEXT_SELECT_MENU:
+                        new_select_menu = row.add_text_menu(
+                            subcomponent.custom_id,
+                            placeholder=subcomponent.placeholder,
+                            min_values=subcomponent.min_values,
+                            max_values=subcomponent.max_values,
+                            is_disabled=subcomponent.is_disabled,
+                        )
                         for option in subcomponent.options:
                             new_select_menu = new_select_menu.add_option(
                                 option.label,
                                 option.value,
                                 description=option.description,
-                                emoji=option.emoji,
+                                emoji=option.emoji if option.emoji else hikari.undefined.UNDEFINED,
                                 is_default=option.is_default,
                             )
 
@@ -380,7 +393,7 @@ async def set_components(message: hikari.Message, *, values: list = None, compon
                         option.label,
                         option.value,
                         description=option.description,
-                        emoji=option.emoji,
+                        emoji=option.emoji if option.emoji else hikari.undefined.UNDEFINED,
                         is_default=option.is_default,
                     )
 
@@ -411,6 +424,28 @@ async def set_components(message: hikari.Message, *, values: list = None, compon
 
     await message.edit(embeds=message.embeds, components=new_components)
 
+async def disable_components(
+    interaction: hikari.ComponentInteraction | hikari.CommandInteraction,
+    message: hikari.Message=None,
+    channel_id: int=None,
+    message_id: int=None
+):
+    if not message:
+        if message_id and channel_id:
+            message = await bloxlink.rest.fetch_message(
+                channel_id,
+                message_id
+            )
+        elif interaction:
+            message = interaction.message
+        else:
+            raise ValueError("interaction is required if message or (message_id and channel_id) is not provided")
+
+    for action_row in message.components:
+        for component in action_row.components:
+            component.is_disabled = True
+
+    await set_components(message, components=message.components)
 
 def get_custom_id_data(
     custom_id: str,
@@ -525,9 +560,9 @@ def component_author_validation(parse_into: CommandCustomID=CommandCustomID, eph
     """
 
     def func_wrapper(func):
-        async def response_wrapper(ctx: commands.CommandContext):
+        async def response_wrapper(ctx: commands.CommandContext, custom_id: BaseCustomID | None=None ):
             interaction = ctx.interaction
-            parsed_custom_id = parse_into.from_str(interaction.custom_id)
+            parsed_custom_id = custom_id or parse_into.from_str(interaction.custom_id)
 
             command_context = commands.build_context(interaction)
             response = command_context.response
@@ -541,7 +576,11 @@ def component_author_validation(parse_into: CommandCustomID=CommandCustomID, eph
                 yield await response.defer(ephemeral)
 
             # Trigger original method
-            yield await func(command_context, parsed_custom_id)
+            try:
+                yield await func(command_context, parsed_custom_id)
+            except TypeError:
+                yield await func(command_context)
+
             return
 
         return response_wrapper

@@ -9,7 +9,7 @@ from resources.commands import CommandContext, GenericCommand
 from resources.exceptions import RobloxAPIError
 from resources.pagination import Paginator, PaginatorCustomID
 from resources.ui.autocomplete import bind_category_autocomplete, bind_id_autocomplete
-from resources.ui.components import BaseCustomID, Component, TextSelectMenu, component_author_validation
+from resources.ui.components import BaseCustomID, Component, TextSelectMenu, component_author_validation, disable_components, BaseCommandCustomID
 
 MAX_BINDS_PER_PAGE = 5
 
@@ -202,10 +202,8 @@ async def unbind_discard_binding(ctx: CommandContext, custom_id: UnbindCustomID)
 
     await delete_bind(guild_id, *bind_deletions)
 
-    # TODO: Can we just disable the components instead?
-    await bloxlink.rest.delete_message(interaction.channel_id, interaction.message)
-
     await response.send("Your chosen bindings have been removed.", ephemeral=True)
+    await disable_components(interaction)
 
 
 @component_author_validation(parse_into=UnbindCustomID, defer=False)
@@ -247,9 +245,18 @@ def viewbinds_item_filter(items: list[GuildBind]):
         ),
     ],
     accepted_custom_ids={
-        "unbind:page": unbind_pagination_button,
-        "unbind:sel_discard": unbind_discard_binding,
-        "unbind:cancel": unbind_cancel_button,
+        BaseCommandCustomID(
+            command_name="unbind",
+            section="page"
+        ): unbind_pagination_button,
+        BaseCommandCustomID(
+            command_name="unbind",
+            section="sel_discard"
+        ): unbind_discard_binding,
+        BaseCommandCustomID(
+            command_name="unbind",
+            section="cancel"
+        ): unbind_cancel_button,
     },
     autocomplete_handlers={
         "category": bind_category_autocomplete,
