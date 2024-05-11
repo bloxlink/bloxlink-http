@@ -16,7 +16,7 @@ click==8.1.7 ; python_version >= "3.12" and python_version < "3.13"
 colorama==0.4.6 ; python_version >= "3.12" and python_version < "3.13" and (sys_platform == "win32" or platform_system == "Windows")
 colorlog==6.8.2 ; python_version >= "3.12" and python_version < "3.13"
 discord-py==2.3.2 ; python_version >= "3.12" and python_version < "3.13"
-dnspython==2.5.0 ; python_version >= "3.12" and python_version < "3.13"
+dnspython==2.6.1 ; python_version >= "3.12" and python_version < "3.13"
 essentials-openapi==1.0.9 ; python_version >= "3.12" and python_version < "3.13"
 essentials==1.1.5 ; python_version >= "3.12" and python_version < "3.13"
 frozenlist==1.4.1 ; python_version >= "3.12" and python_version < "3.13"
