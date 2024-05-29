@@ -23,17 +23,13 @@
     ];
     workspace = {
       # Runs when a workspace is first created with this `dev.nix` file
-      # onCreate = {
-      #   install =
-      #     "python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt";
-      # };
+      onCreate = {
+        install =
+          "python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt";
+      };
       onStart = {
         start-proxy = "ssh -R local.blox.link:80:localhost:8010 localhost.run";
-        # install =
-        #   "python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt";
-      #   update = "poetry update; poetry export --without-hashes --format=requirements.txt > requirements.txt; python3.12 -m venv .venv && source .venv/bin/activate && pip install -U -r requirements.txt";
-      #   run = "echo 'starting bot in 20 seconds'; sleep 20; source .venv/bin/activate; python3.12 src/bot.py";
-          # run = "source .venv/bin/activate";
+        update = "poetry update; poetry export --without-hashes --format=requirements.txt > requirements.txt; python3.12 -m venv .venv && source .venv/bin/activate && pip install -U -r requirements.txt";
       };
     };
     previews = {
