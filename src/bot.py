@@ -5,6 +5,7 @@ from os import environ as env
 
 import hikari
 import uvicorn
+from blacksheep import Application
 from bloxlink_lib import load_modules
 from bloxlink_lib.database import redis
 
@@ -22,7 +23,8 @@ bot = Bloxlink(
 # Load a few modules
 from resources.commands import handle_interaction, sync_commands
 from resources.constants import MODULES
-from web.webserver import webserver
+from web.webserver import application
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -46,13 +48,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-# Initialize the web server
-# IMPORTANT NOTE: blacksheep expects a trailing /
-# in the URL that is given to discord because this is a mount.
-# Example: "example.org/bot/" works, but "example.org/bot" does not (this results in a 307 reply, which discord doesn't honor).
-webserver.mount("/bot", bot)
-
-@webserver.on_start
+@application.on_start
 async def handle_start(_):
     """Start the bot and sync commands"""
 
@@ -73,23 +69,32 @@ async def handle_start(_):
         logging.info("Cleared redis. Run with --clear-redis or -c to force clear.")
 
 
-@webserver.on_stop
+@application.on_stop
 async def handle_stop(_):
     """Executes when the bot is stopped"""
 
     await bot.close()
 
 
+# cannot be in __main__ or the reload won't load the commands and modules
+for interaction_type in (hikari.CommandInteraction, hikari.ComponentInteraction, hikari.AutocompleteInteraction, hikari.ModalInteraction):
+    bot.interaction_server.set_listener(interaction_type, handle_interaction)
+
+load_modules(*MODULES, starting_path="src/")
+
+# Initialize the bot http web server
+# IMPORTANT NOTE: blacksheep expects a trailing /
+# in the URL that is given to discord because this is a mount.
+# Example: "example.org/bot/" works, but "example.org/bot" does not (this results in a 307 reply, which discord doesn't honor).
+application.mount("/bot", bot)
+
 if __name__ == "__main__":
-    # Register the interaction handler for all interaction types.
-    for interaction_type in (hikari.CommandInteraction, hikari.ComponentInteraction, hikari.AutocompleteInteraction, hikari.ModalInteraction):
-        bot.interaction_server.set_listener(interaction_type, handle_interaction)
-
-    load_modules(*MODULES, starting_path="src/")
-
     uvicorn.run(
-        webserver,
+        "web.webserver:application",
         host=env.get("HOST", CONFIG.HOST),
         port=int(env.get("PORT", CONFIG.PORT)),
-        log_config=None,
+        # lifespan="on",
+        # log_level="info",
+        reload=True,
+        reload_dirs=["src"]
     )
