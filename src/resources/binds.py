@@ -15,7 +15,6 @@ from bloxlink_lib import (
     SnowflakeSet,
     StatusCodes,
     count_binds,
-    create_entity,
     fetch_typed,
     get_binds,
     parse_template,
@@ -34,7 +33,7 @@ from resources.exceptions import (
     BloxlinkForbidden,
     Message,
     PremiumRequired,
-    RobloxNotFound,
+    CancelCommand,
 )
 from resources.premium import get_premium_status
 from resources.ui.components import Button, Component
@@ -356,12 +355,16 @@ async def apply_binds(
             )
         except hikari.ForbiddenError:
             raise BloxlinkForbidden("I don't have permission to add roles to this user.") from None
+        except hikari.NotFoundError:
+            raise CancelCommand()
 
     if nickname and guild.owner_id != member.id:
         try:
             await bloxlink.edit_user(member=member, guild_id=guild_id, nickname=nickname)
         except hikari.ForbiddenError:
             warnings.append("I don't have permission to change this user's nickname.")
+        except hikari.NotFoundError:
+            raise CancelCommand()
 
     # Build response embed
     if roblox_account or update_embed_for_unverified or CONFIG.BOT_RELEASE == "LOCAL":
