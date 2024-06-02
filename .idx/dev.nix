@@ -18,7 +18,7 @@
     # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
     extensions = [
       "ms-python.python"
-      "ms-python.pylint"
+      # "ms-python.pylint"
       "ms-python.pylance"
       "humao.rest-client"
       "WakaTime.vscode-wakatime"
