@@ -5,20 +5,22 @@ from subprocess import STDOUT, PIPE, Popen
 from rich.console import Console
 from rich.table import Table
 import requests
+from dotenv import load_dotenv, set_key
+
+load_dotenv(f"{os.getcwd()}/.env")
 
 console = Console()
-
 user_config: dict[str, str] = {
-    "DISCORD_APPLICATION_ID": "",
-    "DISCORD_PUBLIC_KEY": "",
-    "DISCORD_TOKEN": "",
-    "MONGO_URL": "",
-    "REDIS_URL": "",
-    "HOST": "0.0.0.0",
-    "PORT": "8010",
-    "HTTP_BOT_AUTH": "CHANGE_ME",
-    "BOT_API": "",
-    "BOT_API_AUTH": "CHANGE_ME",
+    "DISCORD_APPLICATION_ID": os.environ.get("DISCORD_APPLICATION_ID"),
+    "DISCORD_PUBLIC_KEY": os.environ.get("DISCORD_PUBLIC_KEY"),
+    "DISCORD_TOKEN": os.environ.get("DISCORD_TOKEN"),
+    "MONGO_URL": os.environ.get("MONGO_URL"),
+    "REDIS_URL": os.environ.get("REDIS_URL"),
+    "HOST": os.environ.get("HOST", "0.0.0.0"),
+    "PORT": os.environ.get("PORT", "8010"),
+    "HTTP_BOT_AUTH": os.environ.get("HTTP_BOT_AUTH"),
+    "BOT_API": os.environ.get("BOT_API"),
+    "BOT_API_AUTH": os.environ.get("BOT_API_AUTH"),
 }
 
 def spawn_process(command: str, hide_output: bool=True):
@@ -50,19 +52,23 @@ def step(*steps: tuple[str | tuple[str]], start_with_clear_console: bool=False, 
         else:
             console.print(step)
 
-    if isinstance(input_step, str):
-        user_input = console.input(input_step)
-    else:
-        user_input = console.input(input_step[0])
-        user_config[input_step[2]] = user_input
+    try:
+        if isinstance(input_step, str):
+            user_input = console.input(input_step)
+        else:
+            user_input = console.input(input_step[0])
+            user_config[input_step[2]] = user_input
 
-    for condition, command in spawn_processes:
-        if condition(user_input.lower()):
-            spawn_process(command)
+        for condition, command in spawn_processes:
+            if condition(user_input.lower()):
+                spawn_process(command)
+    except KeyboardInterrupt:
+        # don't print trace back
+        exit()
 
     return user_input
 
-def print_config():
+def ask_for_save_config():
     table = Table(title=".env", show_header=True, header_style="bold magenta")
 
     table.add_column("Name")
@@ -72,6 +78,19 @@ def print_config():
         table.add_row(key, f'"{value}"' if value else '""')
 
     console.print(table)
+
+    save_config = step(
+        "Save .env? [bold cyan]y/N[/bold cyan]: "
+    )
+
+    if save_config.lower() in ("y", "yes"):
+        with open(f"{os.getcwd()}/.env", "w") as f:
+            for key, value in user_config.items():
+                set_key(f"{os.getcwd()}/.env", key, value)
+
+        console.print("Config saved.", style="bold green")
+    else:
+        console.print("Config not saved.")
 
 step(
     ("Welcome to the Bloxlink Installation File.", "bold red"),
@@ -100,7 +119,7 @@ discord_token = step(
 )
 
 step(
-    "Do you already have a [purple]MongoDB[/purple] database setup? If not, a database will be created via Docker: [bold cyan]y/n[/bold cyan]: ",
+    "Do you already have a [purple]MongoDB[/purple] database setup? If not, a database will be created via Docker: [bold cyan]Y/n[/bold cyan]: ",
     start_with_clear_console=True,
     spawn_processes=[
         (lambda c: c in ("n", "no"), "docker-compose up -d mongodb")
@@ -108,7 +127,7 @@ step(
 )
 
 step(
-    "Do you already have a [purple]Redis[/purple] database setup? If not, a database will be created via Docker: [bold cyan]y/n[/bold cyan]: ",
+    "Do you already have a [purple]Redis[/purple] database setup? If not, a database will be created via Docker: [bold cyan]Y/n[/bold cyan]: ",
     start_with_clear_console=True,
     spawn_processes=[
         (lambda c: c in ("n", "no"), "docker-compose up -d redis")
@@ -116,4 +135,4 @@ step(
 )
 
 clear_console()
-print_config()
+ask_for_save_config()
