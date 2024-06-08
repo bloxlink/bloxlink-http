@@ -57,7 +57,9 @@ def step(*steps: tuple[str | tuple[str]], start_with_clear_console: bool=False, 
             user_input = console.input(input_step)
         else:
             user_input = console.input(input_step[0])
-            user_config[input_step[2]] = user_input
+
+            if user_input:
+                user_config[input_step[2]] = user_input
 
         for condition, command in spawn_processes:
             if condition(user_input.lower()):
@@ -72,7 +74,7 @@ def ask_for_save_config():
     table = Table(title=".env", show_header=True, header_style="bold magenta")
 
     table.add_column("Name")
-    table.add_column("Value")
+    table.add_column("Value", width=50)
 
     for key, value in user_config.items():
         table.add_row(key, f'"{value}"' if value else '""')
@@ -106,15 +108,15 @@ step(
     start_with_clear_console=True
 )
 
-discord_client_id = step(
+step(
     ("What is your [purple]Discord Application ID?[/purple] You can find this in the General Information tab. ", None, "DISCORD_APPLICATION_ID")
 )
 
-discord_public_key = step(
+step(
     ("What is your [purple]Discord public key?[/purple] You can find this in the General Information tab. ", None, "DISCORD_PUBLIC_KEY")
 )
 
-discord_token = step(
+step(
     ("What is the [purple]Discord token[/purple] for your application? You can find this in the Bot tab. ", None, "DISCORD_TOKEN")
 )
 
