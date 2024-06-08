@@ -28,6 +28,7 @@
       # Runs when a workspace is first created with this `dev.nix` file
       onCreate = {
         install = "python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt";
+        run-setup = "./setup.sh";
       };
       onStart = {
         start-proxy = "ssh -R local.blox.link:80:localhost:8010 localhost.run";
