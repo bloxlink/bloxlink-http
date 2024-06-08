@@ -4,7 +4,7 @@ import os
 from subprocess import STDOUT, PIPE, Popen
 from rich.console import Console
 from rich.table import Table
-import requests
+# import requests
 from dotenv import load_dotenv, set_key
 
 load_dotenv(f"{os.getcwd()}/.env")
@@ -24,33 +24,38 @@ user_config: dict[str, str] = {
 }
 
 def spawn_process(command: str, hide_output: bool=True):
-    p = Popen(
+    """Spawn a process and optionally wait for the output"""
+
+    with Popen(
         command.split(" "),
         stdin=PIPE,
         stdout=PIPE,
         stderr=STDOUT,
-    )
+    ) as p:
+        if not hide_output:
+            for line in p.stdout:
+                print(line.decode("utf-8"), end="")
 
-    if not hide_output:
-        for line in p.stdout:
-            print(line.decode("utf-8"), end="")
-
-        p.wait()
+            p.wait()
 
 def clear_console():
+    """Clear the console"""
+
     spawn_process("cls" if os.name=="nt" else "clear", False)
 
 def step(*steps: tuple[str | tuple[str]], start_with_clear_console: bool=False, spawn_processes: list[tuple[callable, str]] = ()) -> str:
+    """Ask the user for input and save it to the config."""
+
     if start_with_clear_console:
         clear_console()
 
     input_step = steps[-1]
 
-    for step in steps[:-1]:
-        if isinstance(step, tuple):
-            console.print(step[0], style=step[1])
+    for step_ in steps[:-1]:
+        if isinstance(step_, tuple):
+            console.print(step_[0], style=step_[1])
         else:
-            console.print(step)
+            console.print(step_)
 
     try:
         if isinstance(input_step, str):
@@ -71,6 +76,8 @@ def step(*steps: tuple[str | tuple[str]], start_with_clear_console: bool=False, 
     return user_input
 
 def ask_for_save_config():
+    """Ask the user whether they want to save, and if so, save."""
+
     table = Table(title=".env", show_header=True, header_style="bold magenta")
 
     table.add_column("Name")
@@ -86,7 +93,7 @@ def ask_for_save_config():
     )
 
     if save_config.lower() in ("y", "yes"):
-        with open(f"{os.getcwd()}/.env", "w") as f:
+        with open(f"{os.getcwd()}/.env", "w", encoding="utf-8"):
             for key, value in user_config.items():
                 set_key(f"{os.getcwd()}/.env", key, value)
 
