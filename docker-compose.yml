@@ -9,14 +9,14 @@ services:
       - REDIS_PASSWORD=admin123
     command: /opt/bitnami/scripts/redis/run.sh --maxmemory 100mb --bind "redis"
     volumes:
-      - redis-data:/data
+      - redis-data:/bitnami/redis/data/
     ports:
       - '6379:6379'
     networks:
       - default
 
   mongodb:
-    image: mongo:latest
+    image: mongo:5.0.27
     container_name: mongodb
     restart: always
     environment:
@@ -29,10 +29,44 @@ services:
     networks:
       - default
 
+  bot-api:
+    image: bloxlink/bot-api:latest
+    container_name: bot-api
+    restart: always
+    environment:
+      - MONGO_URL=${MONGO_URL}
+      - REDIS_URL=${REDIS_URL}
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - HTTP_BOT_API=http://bloxlink-http
+      - HTTP_BOT_AUTH=${HTTP_BOT_AUTH}
+      # - SENTRY_DSN=${SENTRY_DSN}
+    ports:
+      - '8000:8000'
+    networks:
+      - default
+    depends_on:
+      - mongodb
+      - redis
+      - bloxlink-http
+
+  bloxlink-http:
+    build: .
+    container_name: bloxlink-http
+    restart: always
+    env_file: .env
+    ports:
+      - '8010:8010'
+    networks:
+      - default
+    depends_on:
+      - mongodb
+      - redis
+      - bot-api
+
 volumes:
   redis-data:
   mongodb-data:
 
 networks:
   default:
-    name: network
+    name: bloxlink-network
