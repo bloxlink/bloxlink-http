@@ -14,13 +14,15 @@ user_config: dict[str, str] = {
     "DISCORD_APPLICATION_ID": os.environ.get("DISCORD_APPLICATION_ID"),
     "DISCORD_PUBLIC_KEY": os.environ.get("DISCORD_PUBLIC_KEY"),
     "DISCORD_TOKEN": os.environ.get("DISCORD_TOKEN"),
-    "MONGO_URL": os.environ.get("MONGO_URL"),
-    "REDIS_URL": os.environ.get("REDIS_URL"),
+    "MONGO_URL": os.environ.get("MONGO_URL", "mongodb://mongodb:27017"),
+    "REDIS_HOST": os.environ.get("REDIS_HOST", "redis"),
+    "REDIS_PORT": os.environ.get("REDIS_PORT", "6379"),
+    "REDIS_PASSWORD": os.environ.get("REDIS_PASSWORD", "admin123"),
     "HOST": os.environ.get("HOST", "0.0.0.0"),
     "PORT": os.environ.get("PORT", "8010"),
-    "HTTP_BOT_AUTH": os.environ.get("HTTP_BOT_AUTH"),
-    "BOT_API": os.environ.get("BOT_API"),
-    "BOT_API_AUTH": os.environ.get("BOT_API_AUTH"),
+    "HTTP_BOT_AUTH": os.environ.get("HTTP_BOT_AUTH", "oof"),
+    "BOT_API": os.environ.get("BOT_API", "http://bot-api/api"),
+    "BOT_API_AUTH": os.environ.get("BOT_API_AUTH", "oof"),
 }
 
 def spawn_process(command: str, hide_output: bool=True):
