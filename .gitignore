@@ -139,3 +139,4 @@ poetry.lock
 requirements.txt
 
 .devcontainer/
+.env.backup
