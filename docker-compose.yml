@@ -6,10 +6,10 @@ services:
     container_name: redis
     restart: always
     environment:
-      - REDIS_PASSWORD=admin123
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     command: /opt/bitnami/scripts/redis/run.sh --maxmemory 100mb --bind "redis"
     volumes:
-      - redis-data:/bitnami/redis/data/
+      - ./redis-data:/bitnami/redis/data/
     ports:
       - '6379:6379'
     networks:
@@ -20,8 +20,8 @@ services:
     container_name: mongodb
     restart: always
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=admin123
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
     ports:
       - '27017:27017'
     volumes:
@@ -34,8 +34,12 @@ services:
     container_name: bot-api
     restart: always
     environment:
-      - MONGO_URL=${MONGO_URL}
-      - REDIS_URL=${REDIS_URL}
+      - MONGO_HOST=${MONGO_HOST}
+      - MONGO_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_PORT=${MONGO_PORT}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_PORT=${REDIS_PORT}
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - HTTP_BOT_API=http://bloxlink-http
       - HTTP_BOT_AUTH=${HTTP_BOT_AUTH}
