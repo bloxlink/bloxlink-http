@@ -9,7 +9,6 @@
     pkgs.gcc
     pkgs.openssh
     pkgs.poetry
-    pkgs.pipx
     pkgs.docker
     pkgs.docker-compose
   ];
@@ -33,10 +32,11 @@
       onStart = {
         start-proxy = "ssh -R local.blox.link:80:localhost:8010 localhost.run";
         update = "poetry update; poetry export --without-hashes --format=requirements.txt > requirements.txt; python3.12 -m venv .venv && source .venv/bin/activate && pip install -U -r requirements.txt";
+        start-bot = "./start.sh";
       };
     };
     previews = {
-      enable = true;
+      enable = false;
       previews = [
         {
           command = [
