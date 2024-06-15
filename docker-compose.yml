@@ -4,7 +4,7 @@ services:
   redis:
     image: bitnami/redis:7.0.15
     container_name: redis
-    restart: always
+    restart: unless-stopped
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
     command: /opt/bitnami/scripts/redis/run.sh --maxmemory 100mb --bind "redis"
@@ -18,7 +18,7 @@ services:
   mongodb:
     image: mongo:5.0.27
     container_name: mongodb
-    restart: always
+    restart: unless-stopped
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
@@ -32,7 +32,7 @@ services:
   bot-api:
     image: bloxlink/bot-api:latest
     container_name: bot-api
-    restart: always
+    restart: unless-stopped
     environment:
       - MONGO_HOST=${MONGO_HOST}
       - MONGO_PASSWORD=${MONGO_PASSWORD}
@@ -55,7 +55,7 @@ services:
   relay-server:
     image: bloxlink/relay-server:latest
     container_name: relay-server
-    restart: always
+    restart: unless-stopped
     environment:
       - MONGO_HOST=${MONGO_HOST}
       - MONGO_PASSWORD=${MONGO_PASSWORD}
@@ -83,7 +83,7 @@ services:
   bloxlink-http:
     build: .
     container_name: bloxlink-http
-    restart: always
+    restart: unless-stopped
     env_file: .env
     ports:
       - '8010:8010'
