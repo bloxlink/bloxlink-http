@@ -25,7 +25,7 @@ from pydantic import Field
 from config import CONFIG
 from resources import restriction
 from resources.api.roblox import users
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.constants import LIMITS, ORANGE_COLOR
 from resources.exceptions import (
     BindConflictError,

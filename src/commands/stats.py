@@ -2,7 +2,7 @@ from datetime import timedelta
 from hikari import Embed
 
 from bloxlink_lib import BaseModel
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.commands import CommandContext, GenericCommand
 
 

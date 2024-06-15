@@ -5,8 +5,8 @@ from bloxlink_lib import get_group, CoerciveSet, RobloxAPIError, GroupLock
 from bloxlink_lib.database import fetch_guild_data, update_guild_data
 from resources.ui.autocomplete import roblox_group_lookup_autocomplete, roblox_group_roleset_autocomplete, AutocompleteOption
 from resources.ui import TextSelectMenu, Component, component_author_validation, disable_components, BaseCommandCustomID
-from resources.pagination import Paginator, PaginatorCustomID
-from resources.bloxlink import instance as bloxlink
+from resources.ui.pagination import Paginator, PaginatorCustomID
+from resources.bloxlink import bloxlink
 from resources.commands import CommandContext, GenericCommand
 from resources.exceptions import RobloxNotFound, Error
 

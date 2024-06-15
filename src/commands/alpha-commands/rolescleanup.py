@@ -1,4 +1,4 @@
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.commands import CommandContext, GenericCommand
 from resources.constants import DEVELOPER_GUILDS
 import hikari

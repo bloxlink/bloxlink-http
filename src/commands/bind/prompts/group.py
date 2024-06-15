@@ -4,7 +4,7 @@ from bloxlink_lib.models.groups import RobloxGroup
 
 from commands.bind.components import PromptComponents, parse_modal_rank_input
 from resources.binds import create_bind
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.constants import GREEN_COLOR
 from resources.exceptions import BindConflictError, RobloxAPIError, RobloxNotFound
 from resources.response import Prompt, PromptCustomID, PromptPageData

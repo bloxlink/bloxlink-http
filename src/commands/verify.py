@@ -1,6 +1,6 @@
 from bloxlink_lib import get_user_account
 from resources import binds
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.commands import CommandContext, GenericCommand
 
 

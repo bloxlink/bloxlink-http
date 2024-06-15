@@ -1,10 +1,11 @@
 
-from typing import Literal
+from typing import Literal, Annotated
 from datetime import timedelta
 import hikari
+from pydantic import Field
 from bloxlink_lib import BaseModel
 from bloxlink_lib.database import fetch_guild_data, redis
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from config import CONFIG
 
 from .constants import SKU_TIERS
@@ -22,7 +23,7 @@ class PremiumStatus(BaseModel):
     payment_source_url: str = None
     tier: str = None
     term: str = None
-    features: set = None
+    features: Annotated[set, Field(default_factory=set)]
     guild_id: int = None # Does this premium belong to a guild?
     user_id: int = None # Does this premium belong to a user?
 

@@ -3,7 +3,7 @@ from bloxlink_lib import find, get_group
 from bloxlink_lib.database import fetch_guild_data, update_guild_data
 
 from resources.binds import create_bind
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.commands import CommandContext, GenericCommand
 from resources.constants import BROWN_COLOR, DEFAULTS
 from resources.exceptions import RobloxNotFound

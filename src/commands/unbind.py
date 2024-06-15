@@ -4,10 +4,10 @@ import hikari
 from bloxlink_lib import VALID_BIND_TYPES, GuildBind
 
 from resources.binds import delete_bind, generate_binds_embed, get_binds
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.commands import CommandContext, GenericCommand
 from resources.exceptions import RobloxAPIError
-from resources.pagination import Paginator, PaginatorCustomID
+from resources.ui.pagination import Paginator, PaginatorCustomID
 from resources.ui.autocomplete import bind_category_autocomplete, bind_id_autocomplete
 from resources.ui.components import BaseCustomID, Component, TextSelectMenu, component_author_validation, disable_components, BaseCommandCustomID
 

@@ -3,7 +3,7 @@ from bloxlink_lib import GuildBind, build_binds_desc, create_entity
 
 from commands.bind.components import PromptComponents
 from resources.binds import create_bind
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.constants import GREEN_COLOR
 from resources.exceptions import RobloxAPIError
 from resources.response import Prompt, PromptCustomID, PromptPageData

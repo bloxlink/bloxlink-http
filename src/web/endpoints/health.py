@@ -2,7 +2,7 @@ from blacksheep import  Request, ok
 from blacksheep.server.controllers import APIController, Controller, get
 
 from bloxlink_lib.database import redis
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 
 
 class Health(APIController):

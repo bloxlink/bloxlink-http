@@ -1,6 +1,6 @@
 from hikari import Embed
 
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.commands import CommandContext, GenericCommand
 
 

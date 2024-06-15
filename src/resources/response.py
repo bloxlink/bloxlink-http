@@ -10,10 +10,10 @@ from bloxlink_lib import UNDEFINED, BaseModel, BloxlinkException
 from bloxlink_lib.database import redis
 from pydantic import Field
 
-import resources.commands as commands
+from resources import commands
 import resources.ui.components as Components
 import resources.ui.modals as modal
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.ui.embeds import InteractiveMessage
 
 from .exceptions import CancelCommand, PageNotFound

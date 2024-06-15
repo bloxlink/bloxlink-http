@@ -6,7 +6,7 @@ from hikari.commands import CommandOption, OptionType
 
 from commands.bind.prompts.generic_bind import GenericBindPrompt
 from commands.bind.prompts.group import GroupPrompt, GroupRolesConfirmationPrompt
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.commands import CommandContext, GenericCommand
 from resources.exceptions import RobloxNotFound
 

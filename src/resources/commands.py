@@ -19,8 +19,9 @@ from resources.exceptions import (
 from resources.ui.modals import ModalCustomID
 from resources.premium import get_premium_status
 from resources.response import Prompt, PromptCustomID, PromptPageData, Response
-from resources.pagination import PaginatorCustomID, Paginator
+from resources.ui.pagination import PaginatorCustomID, Paginator
 from resources.ui.components import CommandCustomID, BaseCommandCustomID, UnsupportedCustomID
+from resources.bloxlink import bloxlink
 from static.whitelist import WHITELISTED_GUILDS
 from config import CONFIG
 
@@ -31,8 +32,6 @@ if TYPE_CHECKING:
 command_name_pattern = re.compile("(.+)Command")
 
 slash_commands: dict[str, Command] = {}
-
-bloxlink: 'Bloxlink' = None
 
 
 class Command(BaseModelArbitraryTypes):
@@ -639,22 +638,14 @@ def new_command(command: Callable, **command_args: Unpack[NewCommandArgs]):
     logging.info(f"Registered command {command_name}")
 
 
-async def sync_commands(bot: hikari.RESTBot):
-    """Publish our slash commands to Discord.
-
-    Args:
-        bot (hikari.RESTBot): The bot object to publish slash commands for.
-    """
-
-    global bloxlink # pylint: disable=global-statement
-
-    bloxlink = bot
+async def sync_commands():
+    """Publish our slash commands to Discord."""
 
     commands: list[hikari.PartialCommand] = []
     guild_commands: dict[int, list[hikari.PartialCommand]] = {}
 
     for new_command_data in slash_commands.values():
-        command: hikari.api.SlashCommandBuilder = bot.rest.slash_command_builder(
+        command: hikari.api.SlashCommandBuilder = bloxlink.rest.slash_command_builder(
             new_command_data.name, new_command_data.description
         )
 
@@ -679,7 +670,7 @@ async def sync_commands(bot: hikari.RESTBot):
                 guild_commands[guild_id] = guild_commands.get(guild_id, [])
                 guild_commands[guild_id].append(command)
 
-    await bot.rest.set_application_commands(
+    await bloxlink.rest.set_application_commands(
         application=CONFIG.DISCORD_APPLICATION_ID,
         commands=commands,
     )
@@ -687,7 +678,7 @@ async def sync_commands(bot: hikari.RESTBot):
     if guild_commands:
         for guild_id, commands in guild_commands.items():
             try:
-                await bot.rest.set_application_commands(
+                await bloxlink.rest.set_application_commands(
                     application=CONFIG.DISCORD_APPLICATION_ID,
                     commands=commands,
                     guild=guild_id

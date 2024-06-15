@@ -8,7 +8,7 @@ from bloxlink_lib import BaseModel, MemberSerializable, RobloxDown, StatusCodes,
 from bloxlink_lib.database import fetch_guild_data, redis
 
 from resources import binds
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.exceptions import BloxlinkForbidden
 
 from ..decorators import authenticate

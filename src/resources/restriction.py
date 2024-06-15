@@ -4,7 +4,7 @@ import hikari
 from pydantic import Field
 from bloxlink_lib import MemberSerializable, fetch_typed, StatusCodes, get_user, RobloxUser, get_accounts, reverse_lookup, BaseModelArbitraryTypes, BaseModel
 
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.exceptions import Message, UserNotVerified
 from resources.constants import RED_COLOR, SERVER_INVITE
 from resources.response import Response

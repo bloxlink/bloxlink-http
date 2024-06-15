@@ -15,8 +15,6 @@ from bloxlink_lib.database import redis
 from resources.redis import RedisMessageCollector
 from config import CONFIG
 
-instance: "Bloxlink" = None
-
 
 if TYPE_CHECKING:
     from resources.commands import NewCommandArgs
@@ -28,7 +26,6 @@ class Bloxlink(yuyo.AsgiBot):
 
     def __init__(self, *args, **kwargs):
         """Initialize the bot & the MongoDB connection."""
-        global instance  # pylint: disable=global-statement
 
         super().__init__(*args, **kwargs)
         self.started_at = datetime.utcnow()
@@ -36,8 +33,6 @@ class Bloxlink(yuyo.AsgiBot):
         self.mongo.get_io_loop = asyncio.get_running_loop
 
         self.redis_messages: RedisMessageCollector = None
-
-        instance = self
 
     async def start(self) -> Coroutine[any, any, None]:
         """Start the bot"""
@@ -227,3 +222,10 @@ class Bloxlink(yuyo.AsgiBot):
             return wrapper
 
         return decorator
+
+bloxlink = Bloxlink(
+    public_key=CONFIG.DISCORD_PUBLIC_KEY,
+    token=CONFIG.DISCORD_TOKEN,
+    token_type=hikari.TokenType.BOT,
+    asgi_managed=False,
+)

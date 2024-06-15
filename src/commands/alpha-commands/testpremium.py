@@ -1,6 +1,6 @@
 import hikari
 from bloxlink_lib.database import update_guild_data, fetch_guild_data
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.commands import CommandContext, GenericCommand
 from resources.constants import DEVELOPER_GUILDS
 

@@ -4,7 +4,7 @@ from hikari.commands import CommandOption, OptionType
 from bloxlink_lib import RobloxUser, reverse_lookup
 from resources.api.roblox import users
 from resources.ui.autocomplete import roblox_user_lookup_autocomplete
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.commands import CommandContext, GenericCommand
 from resources.exceptions import RobloxNotFound
 

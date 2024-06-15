@@ -3,7 +3,7 @@ import hikari
 
 from bloxlink_lib import get_user
 from resources.api.roblox import users
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.exceptions import UserNotVerified
 from resources.commands import CommandContext, GenericCommand
 

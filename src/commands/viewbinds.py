@@ -4,9 +4,9 @@ import hikari
 from bloxlink_lib import VALID_BIND_TYPES, GuildBind, get_binds
 
 from resources.binds import generate_binds_embed
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources.commands import CommandContext, GenericCommand
-from resources.pagination import Paginator, PaginatorCustomID
+from resources.ui.pagination import Paginator, PaginatorCustomID
 from resources.ui.autocomplete import bind_category_autocomplete, bind_id_autocomplete
 from resources.ui.components import component_author_validation, BaseCommandCustomID
 

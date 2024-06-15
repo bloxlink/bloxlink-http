@@ -7,7 +7,7 @@ from pydantic import Field, field_validator
 from bloxlink_lib import BaseModelArbitraryTypes, BaseModel
 import hikari
 
-from resources.bloxlink import instance as bloxlink
+from resources.bloxlink import bloxlink
 from resources import commands
 
 
