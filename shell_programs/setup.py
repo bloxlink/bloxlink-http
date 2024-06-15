@@ -113,7 +113,7 @@ def ask_for_save_config():
         "IMPORTANT: you must run a reverse proxy to accept requests over HTTPS.\n"
         "You can run [purple]ssh -R 80:localhost:8010 serveo.net[/purple] in your terminal to start the reverse proxy. "
         "You can use any forwarding service; localhost.run and ngrok are other alternatives.\n\n"
-        "[purple]Copy the URL, start the bot web server and paste it in your Discord dashboard under General Information -> Interactions Endpoint Url.[/purple]",
+        "[purple]Copy the URL and append \"/bot\" to the URL, start the bot web server and paste it in your Discord dashboard under General Information -> Interactions Endpoint Url.[/purple]",
         "You can run the bot using [purple]docker-compose up bloxlink-http[/purple]."
     )
 
