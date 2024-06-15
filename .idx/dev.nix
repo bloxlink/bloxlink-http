@@ -10,13 +10,16 @@
     pkgs.openssh
     pkgs.poetry
     pkgs.pipx
+    pkgs.docker
+    pkgs.docker-compose
   ];
+  services.docker.enable = true; # used for setup.py to launch mongodb and redis
   idx = {
     # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
     extensions = [
       "ms-python.python"
-      "ms-python.pylint"
-      # "ms-python.pylance"
+      # "ms-python.pylint"
+      "ms-python.pylance"
       "humao.rest-client"
       "WakaTime.vscode-wakatime"
       "ms-python.debugpy"
@@ -24,8 +27,8 @@
     workspace = {
       # Runs when a workspace is first created with this `dev.nix` file
       onCreate = {
-        install =
-          "python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt";
+        install = "python3.12 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt";
+        run-setup = "./setup.sh";
       };
       onStart = {
         start-proxy = "ssh -R local.blox.link:80:localhost:8010 localhost.run";

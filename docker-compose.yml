@@ -1,0 +1,103 @@
+version: "3.5"
+
+services:
+  redis:
+    image: bitnami/redis:7.0.15
+    container_name: redis
+    restart: always
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    command: /opt/bitnami/scripts/redis/run.sh --maxmemory 100mb --bind "redis"
+    volumes:
+      - redis-data:/bitnami/redis/data
+    ports:
+      - '6379:6379'
+    networks:
+      - default
+
+  mongodb:
+    image: mongo:5.0.27
+    container_name: mongodb
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - default
+
+  bot-api:
+    image: bloxlink/bot-api:latest
+    container_name: bot-api
+    restart: always
+    environment:
+      - MONGO_HOST=${MONGO_HOST}
+      - MONGO_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_PORT=${MONGO_PORT}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_PORT=${REDIS_PORT}
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - HTTP_BOT_API=http://bloxlink-http
+      - HTTP_BOT_AUTH=${HTTP_BOT_AUTH}
+      # - SENTRY_DSN=${SENTRY_DSN}
+    ports:
+      - '8000:8000'
+    networks:
+      - default
+    depends_on:
+      - mongodb
+      - redis
+
+  relay-server:
+    image: bloxlink/relay-server:latest
+    container_name: relay-server
+    restart: always
+    environment:
+      - MONGO_HOST=${MONGO_HOST}
+      - MONGO_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_PORT=${MONGO_PORT}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_PORT=${REDIS_PORT}
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - HTTP_BOT_API=${HTTP_BOT_API}
+      - HTTP_BOT_AUTH=${HTTP_BOT_AUTH}
+      - PLAYING_STATUS=${PLAYING_STATUS}
+      - SHARD_COUNT=1
+      - SHARDS_PER_NODE=1
+      - BOT_RELEASE=LOCAL
+      - HOST=${HOST}
+      - PORT=8020
+    ports:
+      - '8020:8020'
+    networks:
+      - default
+    depends_on:
+      - mongodb
+      - redis
+
+  bloxlink-http:
+    build: .
+    container_name: bloxlink-http
+    restart: always
+    env_file: .env
+    ports:
+      - '8010:8010'
+    networks:
+      - default
+    depends_on:
+      - mongodb
+      - redis
+      - bot-api
+
+volumes:
+  redis-data:
+  mongodb-data:
+
+networks:
+  default:
+    name: bloxlink-network
