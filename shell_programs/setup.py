@@ -94,14 +94,38 @@ def ask_for_save_config():
         "Save .env? [bold cyan]y/N[/bold cyan]: "
     )
 
+    clear_console()
+
     if save_config.lower() in ("y", "yes"):
         with open(f"{os.getcwd()}/.env", "w", encoding="utf-8"):
             for key, value in user_config.items():
                 set_key(f"{os.getcwd()}/.env", key, value)
 
-        console.print("Config saved.", style="bold green")
+        console.print("Bloxlink HTTP is now configured. Please double-check the .env file and update accordingly.", style="bold green")
     else:
         console.print("Config not saved.")
+
+    console.print("\n")
+    console.print(
+        "IMPORTANT: you must run a reverse proxy to accept requests over HTTPS.\n"
+        "You can run [purple]ssh -R 80:localhost:8010 serveo.net[/purple] in your terminal to start the reverse proxy. "
+        "You can use any forwarding service; localhost.run and ngrok are other alternatives.\n\n"
+        "[purple]Copy the URL, start the bot web server and paste it in your Discord dashboard under General Information -> Interactions Endpoint Url.[/purple]",
+        "You can run the bot using [purple]docker-compose up bloxlink-http[/purple]."
+    )
+
+
+def ask_to_run_bot():
+    """Ask the user whether they want to run the bot."""
+
+    run_bot = step(
+        "Run the bot? [bold cyan]y/N[/bold cyan]: ",
+    )
+
+    if run_bot.lower() in ("y", "yes"):
+        console.print("Starting bot...", style="bold green")
+        spawn_process("docker-compose up bloxlink-http", hide_output=False)
+
 
 step(
     ("Welcome to the Bloxlink Installation File.", "bold red"),
@@ -147,3 +171,5 @@ step(
 
 clear_console()
 ask_for_save_config()
+
+ask_to_run_bot()

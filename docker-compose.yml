@@ -47,7 +47,6 @@ services:
     depends_on:
       - mongodb
       - redis
-      - bloxlink-http
 
   bloxlink-http:
     build: .
