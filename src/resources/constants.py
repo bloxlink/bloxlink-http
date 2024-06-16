@@ -1,5 +1,5 @@
 # fmt: off
-MODULES = [
+MODULES: list[str] = [
 	"commands",
     "resources",
     "web.endpoints",
@@ -21,7 +21,7 @@ LIMITS = {
     }
 }
 
-SKU_TIERS = {
+SKU_TIERS: dict[int, str] = {
 	1022662272188952627: "basic/month",
 	1156326821785260102: "pro/month",
 	1106314705867378928: "basic/month" # test sku
@@ -51,7 +51,7 @@ UNICODE_BLANK = "\u2800"
 SPLIT_CHAR = "\U0001D15D"
 
 # Utilized for bind command logic.
-GROUP_RANK_CRITERIA = {
+GROUP_RANK_CRITERIA: dict[str, str] = {
     "equ": "Rank must exactly match...",
     "gte": "Rank must be greater than or equal to...",
     "lte": "Rank must be less than or equal to...",
@@ -59,7 +59,7 @@ GROUP_RANK_CRITERIA = {
     "gst": "User must NOT be a member of this group.",
     "all": "User must be a member of this group.",
 }
-GROUP_RANK_CRITERIA_TEXT = {
+GROUP_RANK_CRITERIA_TEXT: dict[str, str] = {
     "equ": "People with the rank",
     "gte": "People with a rank greater than or equal to",
     "lte": "People with a rank less than or equal to",
@@ -68,8 +68,8 @@ GROUP_RANK_CRITERIA_TEXT = {
     "all": "People who are in **this group**",
 }
 
-DEVELOPERS = [84117866944663552, 156872400145874944]
-DEVELOPER_GUILDS = [439265180988211211, 1022176542379479091]
+DEVELOPERS: list[int] = [84117866944663552, 156872400145874944]
+DEVELOPER_GUILDS: list[int] = [439265180988211211, 1022176542379479091]
 
 VERIFY_URL_GUILD = "https://blox.link/dashboard/verifications/verify?page=username&guild={guild_id}"
 VERIFY_URL = "https://blox.link/dashboard/verifications"

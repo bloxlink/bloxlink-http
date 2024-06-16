@@ -11,7 +11,7 @@ import humanize
 from pydantic import Field
 from bloxlink_lib import BaseModelArbitraryTypes, find
 from bloxlink_lib.database import redis, fetch_guild_data, update_guild_data
-from resources.constants import DEVELOPERS
+from resources.user_permissions import get_user_type, UserTypes
 from resources.exceptions import (
     BloxlinkForbidden, CancelCommand, PremiumRequired, UserNotVerified,
     RobloxNotFound, RobloxDown, Message, BindException
@@ -82,7 +82,7 @@ class Command(BaseModelArbitraryTypes):
 
         member = ctx.member
 
-        if member.id in DEVELOPERS and CONFIG.BOT_RELEASE != "LOCAL":
+        if get_user_type(member.id) == UserTypes.BLOXLINK_DEVELOPER and CONFIG.BOT_RELEASE != "LOCAL":
             return True
 
         if (member.permissions & self.permissions) != self.permissions:
@@ -94,7 +94,7 @@ class Command(BaseModelArbitraryTypes):
             )
 
         # second check seems redundant but it's to make it work locally because of the above bypass
-        if self.developer_only and not member.id in DEVELOPERS:
+        if self.developer_only and get_user_type(member.id) != UserTypes.BLOXLINK_DEVELOPER:
             raise BloxlinkForbidden("This command is only available to developers.", ephemeral=True)
 
     async def assert_cooldown(self, ctx: CommandContext):
@@ -299,6 +299,10 @@ async def handle_interaction(interaction: hikari.Interaction):
 
     correct_handler: Callable = None
     response = Response(interaction)
+
+    if get_user_type(interaction.user.id) == UserTypes.BLOXLINK_BLACKLISTED:
+        yield await response.send_first("You are banned from using Bloxlink due to a policy violation.", ephemeral=True)
+        return
 
     match interaction:
         case hikari.CommandInteraction():

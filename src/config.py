@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Annotated
 from os import getcwd, environ
 from dotenv import load_dotenv
 from pydantic import Field
@@ -19,8 +19,10 @@ class Config(BLOXLINK_CONFIG):
     BOT_API_AUTH: str
     #############################
     HOST: str
-    PORT: int = Field(default=8010)
+    PORT: Annotated[int, Field(default=8010)]
     HTTP_BOT_AUTH: str
+    STAFF_GUILD_ID: int = None
+    STAFF_ROLE_ID: int = None
 
 
 CONFIG: Config = Config(
