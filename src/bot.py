@@ -78,8 +78,8 @@ load_modules(*MODULES, starting_path="src/", execute_deferred_modules=False)
 # Initialize the bloxlink http web server
 # IMPORTANT NOTE: blacksheep expects a trailing /
 # in the URL that is given to discord because this is a mount.
-# Example: "example.org/bloxlink/" works, but "example.org/bloxlink" does not (this results in a 307 reply, which discord doesn't honor).
-application.mount("/bloxlink", bloxlink)
+# Example: "example.org/bot/" works, but "example.org/bot" does not (this results in a 307 reply, which discord doesn't honor).
+application.mount("/bot", bloxlink)
 
 if __name__ == "__main__":
     uvicorn.run(
