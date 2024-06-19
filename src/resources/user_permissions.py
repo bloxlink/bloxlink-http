@@ -1,5 +1,5 @@
 import logging
-from enum import Enum
+from enum import Enum, auto
 from bloxlink_lib import defer_execution
 from config import CONFIG
 from resources.bloxlink import bloxlink
@@ -11,10 +11,10 @@ class UserTypes(Enum):
     """Types for users"""
 
     BLOXLINK_BLACKLISTED = 0
-    BLOXLINK_USER        = 1
-    BLOXLINK_PARTNER     = 2
-    BLOXLINK_STAFF       = 3
-    BLOXLINK_DEVELOPER   = 4
+    BLOXLINK_USER        = auto()
+    # BLOXLINK_PARTNER     = auto()
+    BLOXLINK_STAFF       = auto()
+    BLOXLINK_DEVELOPER   = auto()
 
 
 special_users: dict[int, UserTypes] = {}
@@ -26,11 +26,10 @@ async def load_staff():
 
     if CONFIG.STAFF_GUILD_ID and CONFIG.STAFF_ROLE_ID:
         logging.info("Loading Bloxlink staff...")
-        team_guild = await bloxlink.rest.fetch_guild(CONFIG.STAFF_GUILD_ID)
-        team_role = await team_guild.fetch_role(CONFIG.STAFF_ROLE_ID)
+        team_members: list[int] = [m.id for m in await bloxlink.rest.fetch_members(CONFIG.STAFF_GUILD_ID) if not m.is_bot and CONFIG.STAFF_ROLE_ID in m.role_ids]
 
-        for member in team_role.members:
-            special_users[member.id] = UserTypes.BLOXLINK_STAFF
+        for member_id in team_members:
+            special_users[member_id] = UserTypes.BLOXLINK_STAFF
 
         logging.info("Loaded Bloxlink staff")
     else:
@@ -61,3 +60,10 @@ def get_user_type(user_id: int) -> UserTypes:
     """Get the type of a user"""
 
     return special_users.get(user_id, UserTypes.BLOXLINK_USER)
+
+def get_special_users() -> list[int]:
+    """Get all special users"""
+
+    print(special_users)
+
+    return [k for k, v in special_users.items() if v in (UserTypes.BLOXLINK_STAFF, UserTypes.BLOXLINK_DEVELOPER)]

@@ -17,7 +17,7 @@ from resources.exceptions import (
     RobloxNotFound, RobloxDown, Message, BindException
 )
 from resources.ui.modals import ModalCustomID
-from resources.premium import get_premium_status
+from resources.premium import get_premium_status, PremiumTier
 from resources.response import Prompt, PromptCustomID, PromptPageData, Response
 from resources.ui.pagination import PaginatorCustomID, Paginator
 from resources.ui.components import CommandCustomID, BaseCommandCustomID, UnsupportedCustomID
@@ -65,7 +65,7 @@ class Command(BaseModelArbitraryTypes):
         if self.premium or CONFIG.BOT_RELEASE == "PRO":
             premium_status = await get_premium_status(guild_id=interaction.guild_id, interaction=interaction)
 
-            if not self.pro_bypass and ((CONFIG.BOT_RELEASE == "PRO" and premium_status.tier != "pro") or (self.premium and not premium_status.active)):
+            if not self.pro_bypass and ((CONFIG.BOT_RELEASE == "PRO" and premium_status.tier != PremiumTier.PRO) or (self.premium and not premium_status.active)):
                 raise PremiumRequired()
 
     async def assert_permissions(self, ctx: CommandContext):

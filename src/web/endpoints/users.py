@@ -3,13 +3,14 @@ import logging
 
 import hikari
 from blacksheep import FromJSON, Request, ok, status_code
-from blacksheep.server.controllers import APIController, get, post
+from blacksheep.server.controllers import APIController, post, get
 from bloxlink_lib import BaseModel, MemberSerializable, RobloxDown, StatusCodes, get_user_account
 from bloxlink_lib.database import fetch_guild_data, redis
 
 from resources import binds
 from resources.bloxlink import bloxlink
 from resources.exceptions import BloxlinkForbidden
+from resources.user_permissions import get_user_type
 
 from ..decorators import authenticate
 
@@ -56,16 +57,17 @@ class MemberJoinPayload(BaseModel):
     member: MemberSerializable
 
 
-class Update(APIController):
-    """Results in a path of <URL>/api/update/..."""
+class Users(APIController):
+    """Results in a path of <URL>/api/users/..."""
 
-    @get("/users")
-    @authenticate()
-    async def get_users(self, _request: Request):
-        """Endpoint to get a user, just for testing availability currently."""
-        return ok("OK")
+    # @get("/{user_id}")
+    # @authenticate()
+    # async def get_users(self, _request: Request):
+    #     """Endpoint to get a user, not implemented."""
 
-    @post("/user")
+    #     raise NotImplementedError()
+
+    @post("/{user_id}/update")
     @authenticate()
     async def post_user(self, content: FromJSON[UpdateUserPayload], _request: Request):
         """Endpoint to update a single member
@@ -109,7 +111,7 @@ class Update(APIController):
         })
 
 
-    @post("/users")
+    @post("/update")
     @authenticate()
     async def post_users(self, content: FromJSON[UpdateUsersPayload], _request: Request):
         """Endpoint to receive /verifyall user chunks from the gateway.
@@ -194,6 +196,16 @@ class Update(APIController):
         return status_code(StatusCodes.FORBIDDEN, {
             "error": "This server has auto-roles disabled."
         })
+
+    @get("/{user_id}/type")
+    @authenticate()
+    async def get_user_type(self, user_id: int, _request: Request):
+        """Get the type of user"""
+
+        return ok({
+            "type": get_user_type(user_id).name,
+        })
+
 
 
 async def process_update_members(members: list[MemberSerializable], guild_id: str, nonce: str, dm_users: bool=False):

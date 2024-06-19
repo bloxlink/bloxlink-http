@@ -395,9 +395,12 @@ class Response:
     async def send_premium_upsell(self, raise_exception=True):
         """Send a premium upsell message. This cancels out of the command."""
 
-        self.responded = True
-
-        await self.interaction.create_premium_required_response()
+        try:
+            await self.interaction.create_premium_required_response()
+        except hikari.errors.BadRequestError:
+            await self.send(f"This feature requires premium! You may purchase it from the [Bloxlink dashboard](<https://blox.link/dashboard/guilds/{self.interaction.guild_id}/premium>).")
+        else:
+            self.responded = True
 
         if raise_exception:
             raise CancelCommand()
