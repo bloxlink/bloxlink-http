@@ -134,7 +134,7 @@ class Users(APIController):
             "success": True
         })
 
-    @post("/join/{guild_id}/{user_id}")
+    @post("{user_id}/{guild_id}/join")
     @authenticate()
     async def update_on_join(
         self,
