@@ -35,7 +35,7 @@ from resources.exceptions import (
     PremiumRequired,
     CancelCommand,
 )
-from resources.premium import get_premium_status
+from resources.premium import get_premium_status, PremiumTier
 from resources.ui.components import Button, Component
 from resources.ui.embeds import InteractiveMessage
 
@@ -106,7 +106,7 @@ async def create_bind(
             raise BindException("You have reached the maximum number of binds for this server.")
 
         if (bind_count >= LIMITS["BINDS"]["FREE"] and not premium_status.active) or (
-            bind_count >= LIMITS["BINDS"]["PREMIUM"] and premium_status.active and premium_status.tier != "pro"  # fmt: skip
+            bind_count >= LIMITS["BINDS"]["PREMIUM"] and premium_status.active and premium_status.tier != PremiumTier.PRO  # fmt: skip
         ):
             raise PremiumRequired()
 

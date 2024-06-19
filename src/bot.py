@@ -88,6 +88,6 @@ if __name__ == "__main__":
         port=int(env.get("PORT", CONFIG.PORT)),
         # lifespan="on",
         # log_level="info",
-        reload=True,
+        reload=CONFIG.ENVIRONMENT == "DEVELOPMENT",
         reload_dirs=["src"]
     )

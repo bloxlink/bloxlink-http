@@ -11,13 +11,13 @@ import humanize
 from pydantic import Field
 from bloxlink_lib import BaseModelArbitraryTypes, find
 from bloxlink_lib.database import redis, fetch_guild_data, update_guild_data
-from resources.constants import DEVELOPERS
+from resources.user_permissions import get_user_type, UserTypes
 from resources.exceptions import (
     BloxlinkForbidden, CancelCommand, PremiumRequired, UserNotVerified,
     RobloxNotFound, RobloxDown, Message, BindException
 )
 from resources.ui.modals import ModalCustomID
-from resources.premium import get_premium_status
+from resources.premium import get_premium_status, PremiumTier
 from resources.response import Prompt, PromptCustomID, PromptPageData, Response
 from resources.ui.pagination import PaginatorCustomID, Paginator
 from resources.ui.components import CommandCustomID, BaseCommandCustomID, UnsupportedCustomID
@@ -65,7 +65,7 @@ class Command(BaseModelArbitraryTypes):
         if self.premium or CONFIG.BOT_RELEASE == "PRO":
             premium_status = await get_premium_status(guild_id=interaction.guild_id, interaction=interaction)
 
-            if not self.pro_bypass and ((CONFIG.BOT_RELEASE == "PRO" and premium_status.tier != "pro") or (self.premium and not premium_status.active)):
+            if not self.pro_bypass and ((CONFIG.BOT_RELEASE == "PRO" and premium_status.tier != PremiumTier.PRO) or (self.premium and not premium_status.active)):
                 raise PremiumRequired()
 
     async def assert_permissions(self, ctx: CommandContext):
@@ -82,7 +82,7 @@ class Command(BaseModelArbitraryTypes):
 
         member = ctx.member
 
-        if member.id in DEVELOPERS and CONFIG.BOT_RELEASE != "LOCAL":
+        if get_user_type(member.id) == UserTypes.BLOXLINK_DEVELOPER and CONFIG.BOT_RELEASE != "LOCAL":
             return True
 
         if (member.permissions & self.permissions) != self.permissions:
@@ -94,7 +94,7 @@ class Command(BaseModelArbitraryTypes):
             )
 
         # second check seems redundant but it's to make it work locally because of the above bypass
-        if self.developer_only and not member.id in DEVELOPERS:
+        if self.developer_only and get_user_type(member.id) != UserTypes.BLOXLINK_DEVELOPER:
             raise BloxlinkForbidden("This command is only available to developers.", ephemeral=True)
 
     async def assert_cooldown(self, ctx: CommandContext):
@@ -299,6 +299,10 @@ async def handle_interaction(interaction: hikari.Interaction):
 
     correct_handler: Callable = None
     response = Response(interaction)
+
+    if get_user_type(interaction.user.id) == UserTypes.BLOXLINK_BLACKLISTED:
+        yield await response.send_first("You are banned from using Bloxlink due to a policy violation.", ephemeral=True)
+        return
 
     match interaction:
         case hikari.CommandInteraction():

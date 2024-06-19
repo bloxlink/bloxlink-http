@@ -26,6 +26,10 @@ user_config: dict[str, str] = {
     "HTTP_BOT_AUTH": os.environ.get("HTTP_BOT_AUTH", "oof"),
     "BOT_API": os.environ.get("BOT_API", "http://bot-api/api"),
     "BOT_API_AUTH": os.environ.get("BOT_API_AUTH", "oof"),
+    "STAFF_GUILD_ID": os.environ.get("STAFF_GUILD_ID"),
+    "STAFF_ROLE_ID": os.environ.get("STAFF_ROLE_ID"),
+    "ENVIRONMENT": os.environ.get("ENVIRONMENT", "DEVELOPMENT"),
+    "PLAYING_STATUS": os.environ.get("PLAYING_STATUS", "/invite /help"),
 }
 
 def spawn_process(command: str, hide_output: bool=True):

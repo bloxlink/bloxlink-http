@@ -11,7 +11,7 @@ class Premium(APIController):
 
     @get("/guilds/{guild_id}")
     @authenticate()
-    async def check_guild_premium(self, guild_id: str, request: Request):
+    async def check_guild_premium(self, guild_id: str, _request: Request):
         """Endpoint to check whether the guild has premium/pro."""
 
         premium_status = await get_premium_status(guild_id=guild_id)
