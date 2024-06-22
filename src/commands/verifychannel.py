@@ -2,14 +2,14 @@ import hikari
 from bloxlink_lib import get_user_account
 from resources.bloxlink import bloxlink
 from resources.commands import CommandContext, GenericCommand
-from resources.ui.components import Button, TextInput, UnsupportedCustomID
+from resources.ui.components import Button, TextInput, DeprecatedCustomID
 from resources.ui.modals import build_modal
 from resources.premium import get_premium_status
 from resources import binds
 from resources.api.roblox import users
 
 
-VERIFY_BUTTON_ID = UnsupportedCustomID(
+VERIFY_BUTTON_ID = DeprecatedCustomID(
     content="verify_view:verify_button",
 )
 

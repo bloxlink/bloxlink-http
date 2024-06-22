@@ -20,7 +20,7 @@ from resources.ui.modals import ModalCustomID
 from resources.premium import get_premium_status, PremiumTier
 from resources.response import Prompt, PromptCustomID, PromptPageData, Response
 from resources.ui.pagination import PaginatorCustomID, Paginator
-from resources.ui.components import CommandCustomID, BaseCommandCustomID, UnsupportedCustomID
+from resources.ui.components import CommandCustomID, BaseCommandCustomID, DeprecatedCustomID
 from resources.bloxlink import bloxlink
 from static.whitelist import WHITELISTED_GUILDS
 from config import CONFIG
@@ -47,7 +47,7 @@ class Command(BaseModelArbitraryTypes):
     options: list[hikari.CommandOption] = None
     subcommands: Annotated[dict[str, Subcommand], Field(default_factory=dict)]
     rest_subcommands: list[hikari.CommandOption] = None
-    accepted_custom_ids: dict[BaseCommandCustomID | UnsupportedCustomID, Callable] = None
+    accepted_custom_ids: dict[BaseCommandCustomID | DeprecatedCustomID, Callable] = None
     autocomplete_handlers: dict[str, Callable] = None
     dm_enabled: bool = False
     prompts: list[Type[Prompt]] = []
@@ -233,7 +233,7 @@ class NewCommandArgs(TypedDict, total=False):
     options: list[hikari.commands.CommandOption]
     subcommands: dict[str, Subcommand]
     rest_subcommands: list[hikari.CommandOption]
-    accepted_custom_ids: dict[BaseCommandCustomID | UnsupportedCustomID, Callable]
+    accepted_custom_ids: dict[BaseCommandCustomID | DeprecatedCustomID, Callable]
     autocomplete_handlers: dict[str, Callable]
     dm_enabled: bool
     prompts: list[Prompt]
@@ -531,7 +531,7 @@ async def handle_component(interaction: hikari.ComponentInteraction, response: R
     except (TypeError, IndexError):
         # old custom ID
         # iterate through commands and find the custom_id mapped function
-        logging.warning(f"Unsupported custom_id: {custom_id}")
+        logging.warning(f"Deprecated custom_id: {custom_id}")
         for command in slash_commands.values():
             # find matching custom_id handler
             if command.accepted_custom_ids:

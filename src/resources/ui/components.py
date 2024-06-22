@@ -68,8 +68,8 @@ class BaseCustomID(BaseModel):
     def __add__(self, other: Self) -> str:
         return f"{str(self)}:{str(other)}"
 
-class UnsupportedCustomID(BaseCustomID):
-    """Old custom ID from V3. Only has one attribute, the unsupported custom id."""
+class DeprecatedCustomID(BaseCustomID):
+    """Old custom ID from V3. Only has one attribute, the arbitrary custom id."""
 
     content: str
 
