@@ -44,7 +44,7 @@ async def format_embed(roblox_account: RobloxUser, user: hikari.User = None, gui
     """Create an embed displaying information about a user.
 
     Args:
-        roblox_account (RobloxAccount): The user to display information for. Should be synced.
+        roblox_account (RobloxAccount): The user to display information for.
         user (hikari.User, optional): Discord user for this roblox account. Defaults to None.
 
     Returns:
@@ -126,7 +126,7 @@ async def format_embed(roblox_account: RobloxUser, user: hikari.User = None, gui
 async def get_verification_link(
     user_id: int | str, guild_id: int | str = None, interaction: hikari.ComponentInteraction = None
 ) -> str:
-    """Get the verification link for a user.
+    """Get the verification link for a user. The link is different depending the server has premium or not.
 
     Args:
         user_id (int | str): The user to get the verification link for.
@@ -139,20 +139,9 @@ async def get_verification_link(
 
     if guild_id:
         guild_id = str(guild_id)
-
         premium_status = await get_premium_status(guild_id=guild_id, interaction=interaction)
-        affiliate_enabled = ((await fetch_guild_data(guild_id, "affiliate")).affiliate or {}).get(
-            "enabled"
-        )
 
-        # save where the user verified in
-        # TODO: depreciated, remove
-        await redis.set(f"verifying-from:{user_id}", guild_id, expire=timedelta(hours=1))
-
-        if affiliate_enabled:
-            await redis.set(f"affiliate-verifying-from:{user_id}", guild_id, expire=timedelta(hours=1))
-
-        if affiliate_enabled or premium_status.active:
+        if premium_status.active:
             return VERIFY_URL_GUILD.format(guild_id=guild_id)
 
     return VERIFY_URL
