@@ -1,6 +1,6 @@
 import logging
 from enum import Enum, auto
-from bloxlink_lib import defer_execution
+from bloxlink_lib import defer_execution, get_accounts
 from config import CONFIG
 from resources.bloxlink import bloxlink
 from resources.constants import DEVELOPERS
@@ -17,7 +17,8 @@ class UserTypes(Enum):
     BLOXLINK_DEVELOPER   = auto()
 
 
-special_users: dict[int, UserTypes] = {}
+special_users: dict[int, UserTypes] = {} # discord ID: UserType
+special_users_roblox_accounts: dict[int, int] = {} # roblox ID: discord ID
 
 
 @defer_execution
@@ -30,6 +31,9 @@ async def load_staff():
 
         for member_id in team_members:
             special_users[member_id] = UserTypes.BLOXLINK_STAFF
+
+            for roblox_user in await get_accounts(member_id):
+                special_users_roblox_accounts[roblox_user.id] = member_id
 
         logging.info("Loaded Bloxlink staff")
     else:
@@ -63,7 +67,5 @@ def get_user_type(user_id: int) -> UserTypes:
 
 def get_special_users() -> list[int]:
     """Get all special users"""
-
-    print(special_users)
 
     return [k for k, v in special_users.items() if v in (UserTypes.BLOXLINK_STAFF, UserTypes.BLOXLINK_DEVELOPER)]
