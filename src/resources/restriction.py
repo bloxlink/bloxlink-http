@@ -109,7 +109,7 @@ class Restriction(BaseModelArbitraryTypes):
         """Check if the user is evading a ban in this server."""
 
         matches: list[int] = []
-        roblox_accounts = await get_accounts(self.member)
+        roblox_accounts = await get_accounts(self.member.id)
 
         for account in roblox_accounts:
             matches.extend(await reverse_lookup(account, self.member.id))
