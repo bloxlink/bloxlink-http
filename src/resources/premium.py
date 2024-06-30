@@ -99,22 +99,18 @@ class PremiumStatus(BaseModel):
 
         return None
 
-def get_user_facing_tier_term(tier_name: str) -> tuple[str, str]:
+def get_user_facing_tier_term(tier_name: str) -> tuple[PremiumTier, str]:
     """Returns a user-facing tier name and term."""
 
-    user_facing_tier: str | None = None
+    user_facing_tier: PremiumTier = None
     term: str | None = None
 
-    try:
-        tier, term = tier_name.split("/")
+    tier, term = tier_name.split("/")
 
-        if tier == "basic":
-            user_facing_tier = "Basic Premium"
-        elif tier == "pro":
-            user_facing_tier = "Pro"
-
-    except ValueError:
-        user_facing_tier = tier_name
+    if tier == "basic":
+        user_facing_tier = PremiumTier.BASIC
+    elif tier == "pro":
+        user_facing_tier = PremiumTier.PRO
 
     return user_facing_tier, term
 
