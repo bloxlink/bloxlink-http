@@ -374,7 +374,7 @@ async def apply_binds(
             embed.title = "Member Unchanged"
 
         embed.set_author(
-            name=member.global_name,
+            name=member.display_name,
             icon=member.avatar_url or None,
             url=roblox_account.profile_link if roblox_account else None,
         )
