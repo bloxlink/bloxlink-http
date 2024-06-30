@@ -12,7 +12,7 @@ from resources.premium import get_premium_status
 
 
 async def get_user_from_string(target: str) -> RobloxUser:
-    """Get a RobloxAccount from a given target string (either an ID or username)
+    """Get a RobloxUser from a given target string (either an ID or username)
 
     Args:
         target (str): Roblox ID or username of the account to sync.
