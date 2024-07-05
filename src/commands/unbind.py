@@ -1,7 +1,7 @@
 from typing import get_args
 
 import hikari
-from bloxlink_lib import VALID_BIND_TYPES, GuildBind
+from bloxlink_lib import VALID_BIND_TYPES, GuildBind, RobloxNotFound, get_entity
 
 from resources.binds import delete_bind, generate_binds_embed, get_binds
 from resources.bloxlink import bloxlink
@@ -278,6 +278,14 @@ class UnbindCommand(GenericCommand):
         if category not in get_args(VALID_BIND_TYPES):
             await ctx.response.send(
                 content="The category you gave was not valid. Please choose from the autocomplete options!"
+            )
+            return
+
+        try:
+            await get_entity(category, id_option)
+        except RobloxNotFound:
+            await ctx.response.send(
+                content="The ID you gave was not valid."
             )
             return
 
