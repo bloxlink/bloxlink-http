@@ -18,6 +18,7 @@ from bloxlink_lib import (
     fetch_typed,
     get_binds,
     parse_template,
+    get_environment,
 )
 from bloxlink_lib.database import fetch_guild_data, fetch_user_data, update_guild_data, update_user_data
 from pydantic import Field
@@ -268,6 +269,7 @@ async def apply_binds(
     if roblox_account and roblox_account.groups is None:
         await roblox_account.sync(["groups"])
 
+
     guild: hikari.RESTGuild = await bloxlink.rest.fetch_guild(guild_id)
     guild_roles = guild.roles
     guild_data = await fetch_guild_data(guild_id, "verifiedDM")
@@ -439,7 +441,7 @@ async def confirm_account(
 ):
     """Send a request for the user to confirm their account"""
 
-    if CONFIG.BOT_RELEASE in ("LOCAL", "CANARY"):
+    if get_environment() == "STAGING":
         return
 
     if roblox_account:

@@ -5,7 +5,7 @@ from os import environ as env
 
 import hikari
 import uvicorn
-from bloxlink_lib import load_modules, execute_deferred_module_functions
+from bloxlink_lib import load_modules, execute_deferred_module_functions, get_environment
 from bloxlink_lib.database import redis
 
 from resources.bloxlink import bloxlink
@@ -57,7 +57,7 @@ async def handle_start(_):
     else:
         logging.info("Skipping command sync. Run with --sync-commands or -s to force sync.")
 
-    if CONFIG.BOT_RELEASE == "LOCAL" and args.clear_redis:
+    if get_environment() == "STAGING" and args.clear_redis:
         await redis.flushall()
         logging.info("Cleared redis. Run with --clear-redis or -c to force clear.")
 
@@ -88,6 +88,6 @@ if __name__ == "__main__":
         port=int(env.get("PORT", CONFIG.PORT)),
         # lifespan="on",
         # log_level="info",
-        reload=CONFIG.ENVIRONMENT == "DEVELOPMENT",
+        reload=CONFIG.ENVIRONMENT == "STAGING",
         reload_dirs=["src"]
     )

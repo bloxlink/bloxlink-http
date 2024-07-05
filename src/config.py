@@ -14,7 +14,7 @@ class Config(BLOXLINK_CONFIG):
     DISCORD_APPLICATION_ID: str
     DISCORD_PUBLIC_KEY: str
     BOT_RELEASE: Literal["LOCAL", "CANARY", "MAIN", "PRO"] = "LOCAL"
-    ENVIRONMENT: Literal["DEVELOPMENT", "PRODUCTION"] = "PRODUCTION"
+    ENVIRONMENT: Literal["STAGING", "PRODUCTION"] = "PRODUCTION"
     #############################
     BOT_API: str
     BOT_API_AUTH: str
