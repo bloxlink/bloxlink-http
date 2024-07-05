@@ -80,7 +80,7 @@ class GroupPrompt(Prompt[GroupPromptCustomID]):
                 current_embed = interaction.message.embeds[0]
                 current_embed.title = "New group binds saved."
                 current_embed.description = "The binds on this menu were saved to your server. You can edit your binds at any time by running `/bind` again."
-                current_embed.edit_field(1, "Created Binds")
+                current_embed.edit_field(1, "Created binds")
                 current_embed.color = GREEN_COLOR
 
                 # FIXME: Overriding the prompt in place instead of editing.

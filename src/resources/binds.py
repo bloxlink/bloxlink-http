@@ -342,7 +342,7 @@ async def apply_binds(
 
             except hikari.ForbiddenError:
                 return InteractiveMessage(
-                    embed_description=("I don't have permission to create roles on this server.")
+                    embed_description="I don't have permission to create roles on this server."
                 )
 
     # Apply roles and nickname to the user
