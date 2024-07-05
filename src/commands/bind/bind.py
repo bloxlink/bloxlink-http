@@ -82,13 +82,13 @@ class BindCommand(GenericCommand):
             CommandOption(
                 type=OptionType.INTEGER,
                 name="asset_id",
-                description="What is your asset ID?",
+                description="What is your catalog asset ID?",
                 is_required=True,
             )
         ]
     )
     async def asset(self, ctx: CommandContext):
-        """Bind an asset to your server"""
+        """Bind a catalog asset to your server"""
 
         await self._handle_command(ctx, "asset")
 
