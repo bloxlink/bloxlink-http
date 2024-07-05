@@ -19,6 +19,7 @@ from bloxlink_lib import (
     get_binds,
     parse_template,
     get_environment,
+    Environment
 )
 from bloxlink_lib.database import fetch_guild_data, fetch_user_data, update_guild_data, update_user_data
 from pydantic import Field
@@ -441,7 +442,7 @@ async def confirm_account(
 ):
     """Send a request for the user to confirm their account"""
 
-    if get_environment() == "STAGING":
+    if get_environment() in (Environment.LOCAL, Environment.CANARY):
         return
 
     if roblox_account:
