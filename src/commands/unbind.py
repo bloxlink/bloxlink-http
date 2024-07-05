@@ -268,13 +268,12 @@ class UnbindCommand(GenericCommand):
     """Delete some binds from your server"""
 
     async def __main__(self, ctx: CommandContext):
-        category = ctx.options["category"]
+        category = ctx.options["category"].lower()
         id_option = ctx.options["id"] if ctx.options["id"] != "view_binds" else None
 
         guild_id = ctx.guild_id
         user_id = ctx.user.id
 
-        category = "catalogAsset" if category == "catalogasset" else category.lower()
         if category not in get_args(VALID_BIND_TYPES):
             await ctx.response.send(
                 content="The category you gave was not valid. Please choose from the autocomplete options!"

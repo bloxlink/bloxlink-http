@@ -90,7 +90,7 @@ class BindCommand(GenericCommand):
     async def asset(self, ctx: CommandContext):
         """Bind an asset to your server"""
 
-        await self._handle_command(ctx, "catalogAsset")
+        await self._handle_command(ctx, "asset")
 
     @bloxlink.subcommand(
         options=[
@@ -125,7 +125,7 @@ class BindCommand(GenericCommand):
     async def _handle_command(
         self,
         ctx: CommandContext,
-        cmd_type: Literal["group", "catalogAsset", "badge", "gamepass"],
+        cmd_type: Literal["group", "asset", "badge", "gamepass"],
     ):
         """
         Handle initial command input and response.
@@ -134,8 +134,8 @@ class BindCommand(GenericCommand):
         The group command is handled by itself in its respective command method.
         """
         match cmd_type:
-            case "catalogAsset" | "badge" | "gamepass":
-                input_id = ctx.options[f"{cmd_type}_id" if cmd_type != "catalogAsset" else "asset_id"]
+            case "asset" | "badge" | "gamepass":
+                input_id = ctx.options[f"{cmd_type}_id"]
 
                 try:
                     match cmd_type:
@@ -154,6 +154,6 @@ class BindCommand(GenericCommand):
                     GenericBindPrompt,
                     custom_id_data={
                         "entity_id": input_id,
-                        "entity_type": cmd_type if cmd_type != "asset" else "catalogAsset",
+                        "entity_type": cmd_type,
                     },
                 )

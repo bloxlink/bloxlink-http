@@ -46,8 +46,6 @@ async def bind_id_autocomplete(ctx: "CommandContext", focused_option: hikari.Aut
 
     # Only show more options if the category option has been set by the user.
     if category_option:
-        category_option = "catalogAsset" if category_option == "catalogasset" else category_option
-
         guild_binds = await get_binds(interaction.guild_id, category=category_option)
 
         if id_option:
