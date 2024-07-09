@@ -28,7 +28,7 @@ hikari[server] @ git+https://github.com/hikari-py/hikari.git@318a670c2687ea641e1
 hiredis==2.3.2 ; python_version >= "3.12" and python_version < "3.13"
 http-router==4.1.2 ; python_version >= "3.12" and python_version < "3.13"
 httptools==0.6.1 ; python_version >= "3.12" and python_version < "3.13"
-humanize==4.9.0 ; python_version >= "3.12" and python_version < "3.13"
+humanize==4.10.0 ; python_version >= "3.12" and python_version < "3.13"
 idna==3.7 ; python_version >= "3.12" and python_version < "3.13"
 itsdangerous==2.1.2 ; python_version >= "3.12" and python_version < "3.13"
 markdown-it-py==3.0.0 ; python_version >= "3.12" and python_version < "3.13"
